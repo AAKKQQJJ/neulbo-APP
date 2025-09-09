@@ -1,10 +1,10 @@
 import 'package:go_router/go_router.dart';
-import 'package:neulbo/features/btNavigationBar.dart';
-import 'package:neulbo/screens/sleepAI_screen.dart';
-import 'package:neulbo/screens/sleepmode_screen.dart';
 
-import '../screens/home_screen.dart';
-import '../screens/login_screen.dart';
+import '../view/features/btNavigationBar.dart';
+import '../view/screens/home_screen.dart';
+import '../view/screens/login_screen.dart';
+import '../view/screens/sleepAI_screen.dart';
+import '../view/screens/sleepmode_screen.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
@@ -20,7 +20,7 @@ class AppRouter {
       ),
       GoRoute(
         path: '/home',
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) => HomeScreen(),
       ),
       GoRoute(
         path: '/sleepMode',
