@@ -1,13 +1,15 @@
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:neulbo/const/routes.dart';
 
 import 'services/api_service.dart';
 import 'services/oauth_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   ApiService.initialize();
+  await dotenv.load(fileName: ".env");
   runApp(MyApp());
 }
 

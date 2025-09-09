@@ -16,7 +16,7 @@ class AppRouter {
       ),
       GoRoute(
         path: '/btNavi',
-        builder: (context, state) => btNavigationBar(),
+        builder: (context, state) => BtNavigationBar(),
       ),
       GoRoute(
         path: '/home',

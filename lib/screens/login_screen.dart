@@ -11,7 +11,18 @@ class LoginScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 1. Google 로그인 버튼
+            // Naver 로그인 버튼
+            ElevatedButton.icon(
+              onPressed: () => OAuthService.startOAuthLogin('naver'),
+              icon: Icon(Icons.login),
+              label: Text('Naver로 로그인'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Google 로그인 버튼
             ElevatedButton.icon(
               onPressed: () => OAuthService.startOAuthLogin('google'),
               icon: Icon(Icons.login),
@@ -21,7 +32,7 @@ class LoginScreen extends StatelessWidget {
                 foregroundColor: Colors.white,
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
             // Kakao 로그인 버튼
             ElevatedButton.icon(
@@ -31,18 +42,6 @@ class LoginScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.yellow[700],
                 foregroundColor: Colors.black,
-              ),
-            ),
-            SizedBox(height: 16),
-
-            // Naver 로그인 버튼
-            ElevatedButton.icon(
-              onPressed: () => OAuthService.startOAuthLogin('naver'),
-              icon: Icon(Icons.login),
-              label: Text('Naver로 로그인'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
               ),
             ),
           ],

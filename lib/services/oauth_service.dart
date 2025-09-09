@@ -1,6 +1,7 @@
 // lib/services/oauth_service.dart
 import 'dart:convert';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -8,25 +9,28 @@ import 'package:url_launcher/url_launcher.dart';
 class OAuthService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
-  ///백엔드 url 입력 필요
-  static const String backendUrl = 'https://your-backend.com';
+  // ✅ 환경변수에서 안전하게 가져오기
+  static String get backendUrl => dotenv.env['BACKEND_URL'] ?? '';
+  static String get googleClientId => dotenv.env['GOOGLE_CLIENT_ID'] ?? '';
+  static String get kakaoClientId => dotenv.env['KAKAO_CLIENT_ID'] ?? '';
+  static String get naverClientId => dotenv.env['NAVER_CLIENT_ID'] ?? '';
 
   // OAuth 제공자별 설정
   /// TODO - client url 입력 필요
-  static const Map<String, Map<String, String>> oauthConfigs = {
+  static Map<String, Map<String, String>> oauthConfigs = {
     'google': {
       'authUrl': 'https://accounts.google.com/o/oauth2/v2/auth',
-      'clientId': 'your-google-client-id',
+      'clientId': googleClientId,
       'scope': 'openid email profile',
     },
     'kakao': {
       'authUrl': 'https://kauth.kakao.com/oauth/authorize',
-      'clientId': 'your-kakao-client-id',
+      'clientId': kakaoClientId,
       'scope': 'profile_nickname profile_image account_email',
     },
     'naver': {
       'authUrl': 'https://nid.naver.com/oauth2.0/authorize',
-      'clientId': 'your-naver-client-id',
+      'clientId': naverClientId,
       'scope': 'name email profile_image',
     },
   };

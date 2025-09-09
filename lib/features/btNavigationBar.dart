@@ -6,14 +6,14 @@ import '../screens/myprofile_screen.dart';
 import '../screens/sleepAI_screen.dart';
 import '../screens/sleepmode_screen.dart';
 
-class btNavigationBar extends StatefulWidget {
-  const btNavigationBar({super.key});
+class BtNavigationBar extends StatefulWidget {
+  const BtNavigationBar({super.key});
 
   @override
-  State<btNavigationBar> createState() => _btNavigationBarState();
+  State<BtNavigationBar> createState() => _BtNavigationBarState();
 }
 
-class _btNavigationBarState extends State<btNavigationBar> {
+class _BtNavigationBarState extends State<BtNavigationBar> {
   int _selectedIndex = 0;
 
   final List<Widget> _Tap = [
