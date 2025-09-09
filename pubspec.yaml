@@ -83,6 +83,31 @@ flutter:
 
   assets:
     - .env
+    - asset/img/
+    - asset/img/kakao_icon.png
+    - asset/img/naver_icon.png
+    - asset/img/google_icon.png
+
+
+
+  fonts:
+    - family: malang
+      fonts:
+        - asset: asset/font/HancomMalangMalang-Bold.ttf
+          weight: 700
+        - asset: asset/font/HancomMalangMalang-Regular.ttf
+          weight: 500
+
+    - family: suit
+      fonts:
+        - asset: asset/font/SUIT-Bold.ttf
+          weight: 800
+        - asset: asset/font/SUIT-Regular.ttf
+          weight: 600
+        - asset: asset/font/SUIT-Medium.ttf
+          weight: 400
+        - asset: asset/font/SUIT-Light.ttf
+          weight: 200
 
   # To add assets to your application, add an assets section, like this:
   # assets:
