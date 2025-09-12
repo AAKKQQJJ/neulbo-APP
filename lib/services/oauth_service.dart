@@ -1,28 +1,31 @@
-// lib/services/oauth_service.dart
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 class OAuthService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
-  // ✅ 환경변수에서 안전하게 가져오기
+  // 환경변수에서 안전하게 가져오기
   static String get backendUrl => dotenv.env['BACKEND_URL'] ?? '';
-  static String get googleClientId => dotenv.env['GOOGLE_CLIENT_ID'] ?? '';
   static String get kakaoClientId => dotenv.env['KAKAO_CLIENT_ID'] ?? '';
   static String get naverClientId => dotenv.env['NAVER_CLIENT_ID'] ?? '';
 
-  // OAuth 제공자별 설정
-  /// TODO - client url 입력 필요
-  static Map<String, Map<String, String>> oauthConfigs = {
-    'google': {
-      'authUrl': 'https://accounts.google.com/o/oauth2/v2/auth',
-      'clientId': googleClientId,
-      'scope': 'openid email profile',
-    },
+  // Google Sign-In 인스턴스
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+      'profile',
+      'openid',
+    ],
+  );
+
+  // OAuth 제공자별 설정 (Kakao, Naver용)
+  static Map<String, Map<String, String>> get oauthConfigs => {
     'kakao': {
       'authUrl': 'https://kauth.kakao.com/oauth/authorize',
       'clientId': kakaoClientId,
@@ -35,11 +38,95 @@ class OAuthService {
     },
   };
 
-  // 1. OAuth 로그인 시작
+  // OAuth 로그인 시작 (통합 메서드)
   static Future<void> startOAuthLogin(String provider) async {
-    final config = oauthConfigs[provider]!;
-    final redirectUri = 'yourapp://oauth/callback';
-    final state = _generateRandomString(32); // CSRF 방지용
+    switch (provider) {
+      case 'google':
+        await _handleGoogleSignIn();
+        break;
+      case 'kakao':
+      case 'naver':
+        await _handleTraditionalOAuth(provider);
+        break;
+      default:
+        throw Exception('Unsupported OAuth provider: $provider');
+    }
+  }
+
+  // Google Sign-In 처리
+  static Future<void> _handleGoogleSignIn() async {
+    try {
+      // Google 로그인 시도
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      
+      if (account != null) {
+        // 인증 정보 가져오기
+        final GoogleSignInAuthentication auth = await account.authentication;
+        
+        // ID 토큰을 백엔드로 전송 (서버에서 검증)
+        if (auth.idToken != null) {
+          final success = await _sendGoogleTokenToBackend(auth.idToken!);
+          
+          if (success) {
+            print('Google 로그인 성공');
+          } else {
+            print('백엔드 인증 실패');
+            await _googleSignIn.signOut();
+          }
+        } else {
+          print('ID 토큰을 가져올 수 없습니다.');
+          await _googleSignIn.signOut();
+        }
+      } else {
+        print('Google 로그인 취소됨');
+      }
+    } catch (error) {
+      print('Google Sign-In 에러: $error');
+    }
+  }
+
+  // Google ID 토큰을 백엔드로 전송
+  static Future<bool> _sendGoogleTokenToBackend(String idToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$backendUrl/api/oauth/google'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'id_token': idToken,
+          'provider': 'google',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final jwtToken = data['access_token'];
+        final refreshToken = data['refresh_token'];
+
+        // JWT 토큰을 안전하게 저장
+        await _storage.write(key: 'jwt_token', value: jwtToken);
+        if (refreshToken != null) {
+          await _storage.write(key: 'refresh_token', value: refreshToken);
+        }
+
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      print('Google 백엔드 인증 에러: $e');
+      return false;
+    }
+  }
+
+  // 기존 방식 OAuth (Kakao, Naver용)
+  static Future<void> _handleTraditionalOAuth(String provider) async {
+    final config = oauthConfigs[provider];
+    if (config == null) {
+      throw Exception('Unsupported OAuth provider: $provider');
+    }
+
+    final redirectUri = 'coolcool://oauth/callback';
+    final state = _generateRandomString(32);
 
     // state 저장 (나중에 검증용)
     await _storage.write(key: 'oauth_state', value: state);
@@ -52,7 +139,7 @@ class OAuthService {
       'state': state,
     });
 
-    // 2. 외부 브라우저로 OAuth 인증 페이지 열기
+    // 외부 브라우저로 OAuth 인증 페이지 열기
     if (await canLaunchUrl(authUrl)) {
       await launchUrl(authUrl, mode: LaunchMode.externalApplication);
     } else {
@@ -60,7 +147,7 @@ class OAuthService {
     }
   }
 
-  // 3. 딥링크로 돌아온 인가 코드 처리
+  // 딥링크로 돌아온 인가 코드 처리 (Kakao, Naver용)
   static Future<bool> handleOAuthCallback(Uri uri) async {
     try {
       final code = uri.queryParameters['code'];
@@ -73,7 +160,7 @@ class OAuthService {
       }
 
       if (code != null) {
-        // 4. 백엔드로 인가 코드 전송하여 JWT 받기
+        // 백엔드로 인가 코드 전송하여 JWT 받기
         final success = await _exchangeCodeForToken(code);
 
         // 저장된 state 제거
@@ -89,7 +176,7 @@ class OAuthService {
     }
   }
 
-  // 5. 백엔드에 인가 코드를 보내고 JWT 토큰 받기
+  // 백엔드에 인가 코드를 보내고 JWT 토큰 받기 (Kakao, Naver용)
   static Future<bool> _exchangeCodeForToken(String code) async {
     try {
       final response = await http.post(
@@ -97,7 +184,7 @@ class OAuthService {
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'code': code,
-          'redirect_uri': 'yourapp://oauth/callback',
+          'redirect_uri': 'coolcool://oauth/callback',
         }),
       );
 
@@ -106,9 +193,11 @@ class OAuthService {
         final jwtToken = data['access_token'];
         final refreshToken = data['refresh_token'];
 
-        // 7. JWT 토큰을 안전하게 저장
+        // JWT 토큰을 안전하게 저장
         await _storage.write(key: 'jwt_token', value: jwtToken);
-        await _storage.write(key: 'refresh_token', value: refreshToken);
+        if (refreshToken != null) {
+          await _storage.write(key: 'refresh_token', value: refreshToken);
+        }
 
         return true;
       }
@@ -125,10 +214,11 @@ class OAuthService {
     return await _storage.read(key: 'jwt_token');
   }
 
-  // 로그아웃
+  // 로그아웃 (모든 토큰 삭제)
   static Future<void> logout() async {
     await _storage.delete(key: 'jwt_token');
     await _storage.delete(key: 'refresh_token');
+    await _googleSignIn.signOut(); // Google 로그아웃도 함께
   }
 
   // 랜덤 문자열 생성 (state 파라미터용)

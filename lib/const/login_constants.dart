@@ -11,7 +11,7 @@ class LoginConstants {
   static const double buttonHeight = 54.0;
   static const double iconSize = 40.0;
   static const double buttonRadius = 12.0;
-  
+
   // 텍스트 스타일
   static const TextStyle titleStyle = TextStyle(
     color: Colors.white,
@@ -20,39 +20,33 @@ class LoginConstants {
     fontWeight: FontWeight.w700,
     letterSpacing: 2,
   );
-  
+
   static const TextStyle subtitleStyle = TextStyle(
     color: Colors.white,
     fontSize: 16,
     fontFamily: 'suit',
     fontWeight: FontWeight.w600,
   );
-  
+
   static const TextStyle buttonTextStyle = TextStyle(
     fontSize: 16,
     fontFamily: 'suit',
     fontWeight: FontWeight.w800,
   );
-  
+
   static const TextStyle footerPrimaryStyle = TextStyle(
     color: Colors.white,
     fontSize: 12,
     fontFamily: 'suit',
     fontWeight: FontWeight.w800,
   );
-  
+
   static const TextStyle footerSecondaryStyle = TextStyle(
     color: footerSecondaryColor,
     fontSize: 10,
     fontFamily: 'suit',
     fontWeight: FontWeight.w600,
   );
-
-  // 아이콘 경로
-  static const String naverIconPath = 'asset/img/naver_icon.png';
-  static const String googleIconPath = 'asset/img/google_icon.png';
-  static const String kakaoIconPath = 'asset/img/kakao_icon.png';
-  static const String backgroundImagePath = 'asset/img/login_background_img.png';
 
   // 텍스트 상수
   static const String appTitle = '쿨쿨';

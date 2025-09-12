@@ -2,17 +2,29 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleURLName</key>
-            <string>neulbo.oauth</string>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>neulbo</string>
-            </array>
-        </dict>
-    </array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>neulbo.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>neulbo://oauth/callback</string>
+			</array>
+		</dict>
+		<!-- Google Sign-In URL Scheme -->
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>google.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.261111519820-vflfch88r8fqbd9ri2ektmgjdpe1146s</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Google Sign-In Configuration -->
+	<key>GIDClientID</key>
+	<string>261111519820-vflfch88r8fqbd9ri2ektmgjdpe1146s.apps.googleusercontent.com</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

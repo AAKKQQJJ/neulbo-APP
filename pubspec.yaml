@@ -48,6 +48,7 @@ dependencies:
   # OAuth 관련
   oauth2: ^2.0.2
   url_launcher: ^6.2.1
+  google_sign_in: ^6.1.5
 
   # 로컬 저장소 (JWT 토큰 저장용)
   shared_preferences: ^2.2.2
@@ -56,6 +57,7 @@ dependencies:
   app_links: ^6.4.1
 
   flutter_dotenv: ^5.1.0
+
 
 
 dev_dependencies:

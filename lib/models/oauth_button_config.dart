@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../const/design_constants.dart';
 import '../const/login_constants.dart';
 
 class OAuthButtonConfig {
@@ -23,21 +25,21 @@ class OAuthButtonConfig {
       text: LoginConstants.naverLoginText,
       backgroundColor: LoginConstants.naverColor,
       textColor: Colors.white,
-      iconPath: LoginConstants.naverIconPath,
+      iconPath: DesignConstants.naverIconPath,
     ),
     OAuthButtonConfig(
       provider: 'google',
       text: LoginConstants.googleLoginText,
       backgroundColor: LoginConstants.googleBackgroundColor,
       textColor: Colors.black87,
-      iconPath: LoginConstants.googleIconPath,
+      iconPath: DesignConstants.googleIconPath,
     ),
     OAuthButtonConfig(
       provider: 'kakao',
       text: LoginConstants.kakaoLoginText,
       backgroundColor: LoginConstants.kakaoColor,
       textColor: Colors.black87,
-      iconPath: LoginConstants.kakaoIconPath,
+      iconPath: DesignConstants.kakaoIconPath,
     ),
   ];
 }

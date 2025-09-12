@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../widgets/oauth_button.dart';
-import '../../models/oauth_button_config.dart';
+
+import '../../const/design_constants.dart';
 import '../../const/login_constants.dart';
+import '../../models/oauth_button_config.dart';
+import '../../widgets/oauth_button.dart';
 
 class LoginScreen extends StatelessWidget {
   @override
@@ -9,7 +11,7 @@ class LoginScreen extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         image: DecorationImage(
-          image: AssetImage(LoginConstants.backgroundImagePath),
+          image: AssetImage(DesignConstants.backgroundImagePath),
           fit: BoxFit.cover,
         ),
       ),
