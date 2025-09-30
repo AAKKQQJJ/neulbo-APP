@@ -9,7 +9,7 @@ import '../view/screens/sleep_data_demo_screen.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/sleepMode',
     routes: [
       GoRoute(
         path: '/login',
