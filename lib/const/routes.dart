@@ -5,6 +5,7 @@ import '../view/screens/home_screen.dart';
 import '../view/screens/login_screen.dart';
 import '../view/screens/sleepAI_screen.dart';
 import '../view/screens/sleepmode_screen.dart';
+import '../view/screens/sleep_data_demo_screen.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
@@ -29,6 +30,10 @@ class AppRouter {
       GoRoute(
         path: '/sleepAi',
         builder: (context, state) => SleepaiScreen(),
+      ),
+      GoRoute(
+        path: '/sleep-data-demo',
+        builder: (context, state) => SleepDataDemoScreen(),
       ),
     ],
   );

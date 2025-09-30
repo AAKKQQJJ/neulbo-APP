@@ -24,7 +24,7 @@
 	</array>
 	<!-- Google Sign-In Configuration -->
 	<key>GIDClientID</key>
-	<string>261111519820-vflfch88r8fqbd9ri2ektmgjdpe1146s.apps.googleusercontent.com</string>
+	<string>261111519820-dl1qmst4so78cclj7b21iicpg36ul7rq.apps.googleusercontent.com</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -68,5 +68,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- HealthKit 권한 설정 -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>수면 패턴 분석 및 개인 맞춤형 수면 도움을 위해 건강 앱의 수면 데이터에 접근합니다.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>수면 기록을 업데이트하여 더 나은 수면 분석을 제공합니다.</string>
 </dict>
 </plist>

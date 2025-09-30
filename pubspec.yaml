@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.6.0
+  sdk: ^3.4.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -40,23 +40,24 @@ dependencies:
   dio: ^5.3.2
 
   #상태관리
-  flutter_riverpod: ^2.6.1
+  flutter_riverpod: ^2.4.0
 
   #router 관련
-  go_router: ^16.1.0
+  go_router: ^13.0.0
 
   # OAuth 관련
   oauth2: ^2.0.2
-  url_launcher: ^6.2.1
-  google_sign_in: ^6.1.5
+  url_launcher: ^6.1.0
+  google_sign_in: ^6.1.0
 
   # 로컬 저장소 (JWT 토큰 저장용)
-  shared_preferences: ^2.2.2
-  flutter_secure_storage: ^9.0.0
+  shared_preferences: ^2.2.0
+  flutter_secure_storage: ^8.0.0
 
-  app_links: ^6.4.1
+  flutter_dotenv: ^5.0.0
 
-  flutter_dotenv: ^5.1.0
+  # Health Kit 관련 (iOS 건강 앱 연동)
+  health: ^13.0.0
 
 
 
@@ -69,7 +70,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^4.0.0
 
 
 # For information on the generic Dart part of this file, see the
