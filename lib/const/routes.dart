@@ -4,12 +4,12 @@ import '../view/features/btNavigationBar.dart';
 import '../view/screens/home_screen.dart';
 import '../view/screens/login_screen.dart';
 import '../view/screens/sleepAI_screen.dart';
-import '../view/screens/sleepmode_screen.dart';
 import '../view/screens/sleep_data_demo_screen.dart';
+import '../view/screens/sleepmode_screen.dart';
 
 class AppRouter {
   static final GoRouter _router = GoRouter(
-    initialLocation: '/sleepMode',
+    initialLocation: '/btNavi',
     routes: [
       GoRoute(
         path: '/login',
