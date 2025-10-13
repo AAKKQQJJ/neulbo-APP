@@ -438,9 +438,101 @@ class _SleepDataDemoScreenState extends State<SleepDataDemoScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            // 수면 단계별 상세 시간
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDetailedInfoItem(
+                    '깊은잠 (N3)',
+                    _formatDuration(sleepData.deepSleepDuration),
+                    Colors.indigo,
+                  ),
+                ),
+                Expanded(
+                  child: _buildDetailedInfoItem(
+                    '얕은잠 (N1-N2)',
+                    _formatDuration(sleepData.lightSleepDuration),
+                    Colors.blue,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDetailedInfoItem(
+                    'REM 수면',
+                    _formatDuration(sleepData.remSleepDuration),
+                    Colors.purple,
+                  ),
+                ),
+                Expanded(
+                  child: _buildDetailedInfoItem(
+                    '각성 시간',
+                    _formatDuration(sleepData.awakeTimeDuration),
+                    Colors.orange,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    final int hours = duration.inHours;
+    final int minutes = duration.inMinutes.remainder(60);
+    if (hours > 0) {
+      return '${hours}시간 ${minutes}분';
+    } else {
+      return '${minutes}분';
+    }
+  }
+
+  Widget _buildDetailedInfoItem(String label, String value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.grey,
+                fontFamily: 'suit',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'suit',
+            ),
+          ),
+        ),
+      ],
     );
   }
 

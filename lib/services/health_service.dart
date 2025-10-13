@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:health/health.dart';
 
 /// iOS HealthKit과 연동하여 수면 데이터를 관리하는 서비스 클래스
@@ -19,19 +20,42 @@ class HealthService {
     HealthDataType.SLEEP_REM,
   ];
 
-  /// 권한 요청 및 설정
+  /// iOS 권한 체크에 사용할 최소 권한 타입 (하나만 승인되어도 수면 데이터 조회 가능)
+  List<HealthDataType> _permissionTypes() {
+    if (Platform.isIOS) {
+      // iOS는 Sleep 하나의 권한 팝업으로 관리되므로 대표 타입 1개만 검사
+      return const [HealthDataType.SLEEP_ASLEEP];
+    }
+    return _healthDataTypes;
+  }
+
+  /// 권한 요청 및 설정 (읽기 권한 명시)
   Future<bool> requestHealthPermissions() async {
     try {
-      // 건강 앱이 사용 가능한지 확인
-      final bool isAvailable = await Health().hasPermissions(_healthDataTypes) ?? false;
+      final List<HealthDataType> typesForPermission = _permissionTypes();
+      final List<HealthDataAccess> permissions =
+          List<HealthDataAccess>.filled(typesForPermission.length, HealthDataAccess.READ);
+
+      final bool has =
+          await _health.hasPermissions(typesForPermission, permissions: permissions) ?? false;
+
+      if (has) {
+        print('HealthService - ✅ 이미 권한이 존재합니다 (팝업 표시 안 함)');
+        return true;
+      }
+
+      print('HealthService - 권한 팝업을 띄웁니다...');
+
+      final bool authorized =
+          await _health.requestAuthorization(typesForPermission, permissions: permissions);
       
-      if (!isAvailable) {
-        // 권한 요청
-        final bool isAuthorized = await Health().requestAuthorization(_healthDataTypes);
-        return isAuthorized;
+      if (authorized) {
+        print('HealthService - ✅ 권한 승인됨');
+      } else {
+        print('HealthService - ❌ 권한 거부되거나 미승인');
       }
       
-      return true;
+      return authorized;
     } catch (error) {
       print('HealthService - 권한 요청 실패: $error');
       return false;
@@ -44,24 +68,18 @@ class HealthService {
     required DateTime endDate,
   }) async {
     try {
-      // 권한 확인
-      final bool hasPermissions = await Health().hasPermissions(_healthDataTypes) ?? false;
-      
-      if (!hasPermissions) {
-        print('HealthService - 건강 데이터 접근 권한이 없습니다.');
-        return [];
-      }
-
-      // 수면 데이터 조회
-      final List<HealthDataPoint> healthData = await Health().getHealthDataFromTypes(
+      // 권한 체크 없이 바로 데이터 조회 시도
+      // (권한 없으면 예외 발생, 있으면 데이터 반환)
+      final List<HealthDataPoint> healthData = await _health.getHealthDataFromTypes(
         types: _healthDataTypes,
         startTime: startDate,
         endTime: endDate,
       );
 
       // 중복 제거 및 정렬
-      List<HealthDataPoint> filteredData = Health().removeDuplicates(healthData);
+      List<HealthDataPoint> filteredData = _health.removeDuplicates(healthData);
       
+      print('HealthService - 수면 데이터 조회 성공: ${filteredData.length}건');
       return filteredData;
     } catch (error) {
       print('HealthService - 수면 데이터 조회 실패: $error');
@@ -168,10 +186,29 @@ class HealthService {
     return ((deepScore + remScore) / 2).clamp(0, 100);
   }
 
-  /// 건강 앱 연결 상태 확인
+  /// 건강 앱 연결 상태 확인 (실제 데이터 조회로 확인)
   Future<bool> isHealthAppAvailable() async {
     try {
-      return await Health().hasPermissions(_healthDataTypes) ?? false;
+      // hasPermissions는 iOS에서 정확하지 않을 수 있으므로
+      // 실제 데이터 조회 시도로 권한 여부를 판단
+      final DateTime now = DateTime.now();
+      final DateTime yesterday = now.subtract(const Duration(days: 1));
+      
+      try {
+        final List<HealthDataPoint> testData = await _health.getHealthDataFromTypes(
+          types: [HealthDataType.SLEEP_ASLEEP],
+          startTime: yesterday,
+          endTime: now,
+        );
+        
+        // 데이터 조회가 성공하면 권한 있음 (데이터 없어도 조회 자체는 성공)
+        print('HealthService - ✅ 권한 있음 (데이터 조회 성공, ${testData.length}건)');
+        return true;
+      } catch (e) {
+        // 권한 없으면 예외 발생
+        print('HealthService - ❌ 권한 없음 (데이터 조회 실패: $e)');
+        return false;
+      }
     } catch (error) {
       print('HealthService - 건강 앱 연결 상태 확인 실패: $error');
       return false;

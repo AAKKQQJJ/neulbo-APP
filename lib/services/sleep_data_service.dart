@@ -1,6 +1,7 @@
 import '../models/sleep_data.dart';
 import 'api_service.dart';
 import 'health_service.dart';
+import 'oauth_service.dart';
 import 'package:health/health.dart';
 
 /// 수면 데이터를 HealthKit에서 가져와 서버로 전송하는 통합 서비스
@@ -17,19 +18,33 @@ class SleepDataService {
       final bool hasPermissions = await _healthService.requestHealthPermissions();
       
       if (hasPermissions) {
-        // 서버에 HealthKit 연동 상태 업데이트
-        await ApiService.updateHealthKitStatus(true);
+        // 서버에 HealthKit 연동 상태 업데이트 (로그인 된 경우에만)
+        await _notifyBackendHealthKitStatus(true);
         print('SleepDataService - HealthKit 초기화 완료');
         return true;
       } else {
-        await ApiService.updateHealthKitStatus(false);
+        await _notifyBackendHealthKitStatus(false);
         print('SleepDataService - HealthKit 권한 거부됨');
         return false;
       }
     } catch (error) {
       print('SleepDataService - HealthKit 초기화 실패: $error');
-      await ApiService.updateHealthKitStatus(false);
+      await _notifyBackendHealthKitStatus(false);
       return false;
+    }
+  }
+
+  /// JWT가 있을 때만 백엔드에 HealthKit 상태를 통지
+  Future<void> _notifyBackendHealthKitStatus(bool isConnected) async {
+    try {
+      final String? token = await OAuthService.getJwtToken();
+      if (token == null || token.isEmpty) {
+        // 미로그인 상태에서는 서버 호출을 생략
+        return;
+      }
+      await ApiService.updateHealthKitStatus(isConnected);
+    } catch (_) {
+      // 서버 통지는 실패하더라도 앱 플로우를 막지 않음
     }
   }
 
@@ -86,6 +101,10 @@ class SleepDataService {
   /// HealthDataPoint 리스트를 SleepData 객체로 변환
   SleepData? _convertToSleepData(DateTime sleepDate, List<HealthDataPoint> dataPoints) {
     try {
+      if (dataPoints.isEmpty) {
+        return null;
+      }
+
       // 수면 타입별로 데이터 분리
       DateTime? bedTime;
       DateTime? sleepTime;
@@ -96,8 +115,20 @@ class SleepDataService {
       Duration remSleepDuration = Duration.zero;
       Duration awakeTimeDuration = Duration.zero;
 
+      // 전체 데이터에서 시작/종료 시간 추출
+      DateTime? overallStartTime;
+      DateTime? overallEndTime;
+
       for (final HealthDataPoint dataPoint in dataPoints) {
         final Duration duration = dataPoint.dateTo.difference(dataPoint.dateFrom);
+        
+        // 전체 시작/종료 시간 추적
+        if (overallStartTime == null || dataPoint.dateFrom.isBefore(overallStartTime)) {
+          overallStartTime = dataPoint.dateFrom;
+        }
+        if (overallEndTime == null || dataPoint.dateTo.isAfter(overallEndTime)) {
+          overallEndTime = dataPoint.dateTo;
+        }
         
         switch (dataPoint.type) {
           case HealthDataType.SLEEP_IN_BED:
@@ -125,9 +156,14 @@ class SleepDataService {
         }
       }
 
-      // 필수 데이터 확인
+      // SLEEP_IN_BED 데이터가 없는 경우 대체값 사용
+      bedTime ??= sleepTime ?? overallStartTime;
+      wakeTime ??= overallEndTime;
+      sleepTime ??= bedTime;
+
+      // 최소한의 필수 데이터 확인 (모두 non-null이어야 함)
       if (bedTime == null || wakeTime == null || sleepTime == null) {
-        print('SleepDataService - 필수 수면 데이터가 누락됨 (날짜: $sleepDate)');
+        print('SleepDataService - 필수 수면 데이터가 누락됨 (날짜: $sleepDate) - 타입: ${dataPoints.map((d) => d.type.name).toSet().join(", ")}');
         return null;
       }
 
@@ -140,9 +176,9 @@ class SleepDataService {
       return SleepData(
         id: id,
         sleepDate: sleepDate,
-        bedTime: bedTime,
-        sleepTime: sleepTime,
-        wakeTime: wakeTime,
+        bedTime: bedTime, // 이제 non-null 보장
+        sleepTime: sleepTime, // 이제 non-null 보장
+        wakeTime: wakeTime, // 이제 non-null 보장
         totalSleepDuration: totalSleepDuration,
         deepSleepDuration: deepSleepDuration,
         lightSleepDuration: lightSleepDuration,
