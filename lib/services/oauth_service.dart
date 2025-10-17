@@ -7,6 +7,10 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
+import 'api_service.dart';
+import 'user_service.dart';
+import '../models/user_info.dart';
+
 class OAuthService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
@@ -18,10 +22,10 @@ class OAuthService {
   static String get googleClientIdAndroid => dotenv.env['GOOGLE_CLIENT_ID_ANDROID'] ?? '';
   static String get googleClientIdWeb => dotenv.env['GOOGLE_CLIENT_ID_WEB'] ?? '';
 
-  // Google Sign-In 인스턴스 (Server-side 방식)
+  // Google Sign-In 인스턴스 (idToken 방식)
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     // iOS는 Info.plist의 GIDClientID를 자동으로 사용하므로 clientId 파라미터 제거
-    serverClientId: googleClientIdWeb, // 웹 클라이언트 ID로 서버 사이드 인증 활성화
+    // serverClientId를 제거하고 idToken을 받도록 설정
     scopes: [
       'email',
       'profile',
@@ -46,24 +50,23 @@ class OAuthService {
   };
 
   // OAuth 로그인 시작 (통합 메서드)
-  static Future<void> startOAuthLogin(String provider) async {
+  static Future<bool> startOAuthLogin(String provider) async {
     switch (provider) {
       case 'google':
-        await _handleGoogleSignIn();
-        break;
+        return await _handleGoogleSignIn();
       case 'kakao':
       case 'naver':
         await _handleTraditionalOAuth(provider);
-        break;
+        return false; // 딥링크로 처리되므로 여기서는 false 반환
       default:
         throw Exception('Unsupported OAuth provider: $provider');
     }
   }
 
-  // Google Sign-In 처리 (Server-side 방식)
-  static Future<void> _handleGoogleSignIn() async {
+  // Google Sign-In 처리 (idToken 방식)
+  static Future<bool> _handleGoogleSignIn() async {
     try {
-      // 매번 serverAuthCode를 받기 위해 우선 연결을 해제(토큰 철회)
+      // 매번 새로운 토큰을 받기 위해 우선 연결을 해제
       try {
         await _googleSignIn.disconnect();
       } catch (_) {}
@@ -72,86 +75,113 @@ class OAuthService {
       GoogleSignInAccount? account = await _googleSignIn.signIn();
       
       if (account != null) {
-        // 서버 사이드 인증을 위한 인가 코드 가져오기
-        GoogleSignInAuthentication auth = await account.authentication;
+        print('Google 로그인 계정 정보 확인됨: ${account.email}');
         
-        // serverAuthCode (인가 코드)를 백엔드로 전송
-        if (auth.serverAuthCode != null) {
-          final success = await _sendGoogleAuthCodeToBackend(auth.serverAuthCode!);
+        // 사용자 데이터를 백엔드로 전송
+        final success = await _sendGoogleUserDataToBackend(
+          account: account,
+        );
           
-          if (success) {
-            print('Google 로그인 성공');
-          } else {
-            print('백엔드 인증 실패');
-            await _googleSignIn.signOut();
-          }
+        if (success) {
+          print('Google 로그인 성공');
+          return true;
         } else {
-          // 한 번 더 강제 재인증을 시도하여 serverAuthCode 확보
-          print('serverAuthCode가 없어 재시도합니다 (disconnect → signIn).');
-          try {
-            await _googleSignIn.disconnect();
-          } catch (_) {}
-          account = await _googleSignIn.signIn();
-          if (account == null) {
-            print('Google 로그인 취소됨');
-            return;
-          }
-          auth = await account.authentication;
-          if (auth.serverAuthCode != null) {
-            final success = await _sendGoogleAuthCodeToBackend(auth.serverAuthCode!);
-            if (success) {
-              print('Google 로그인 성공');
-            } else {
-              print('백엔드 인증 실패');
-              await _googleSignIn.signOut();
-            }
-          } else {
-            print('인가 코드를 가져올 수 없습니다. Google 콘솔 설정을 확인하세요.');
-            print('- Web Client ID를 serverClientId로 사용 중인지');
-            print('- OAuth 동의화면/테스트 사용자 등록 여부');
-            await _googleSignIn.signOut();
-          }
+          print('백엔드 인증 실패');
+          await _googleSignIn.signOut();
+          return false;
         }
       } else {
         print('Google 로그인 취소됨');
+        return false;
       }
     } catch (error) {
       print('Google Sign-In 에러: $error');
+      return false;
     }
   }
 
-  // Google 인가 코드를 백엔드로 전송
-  static Future<bool> _sendGoogleAuthCodeToBackend(String authCode) async {
+  // Google 사용자 데이터를 백엔드로 전송
+  static Future<bool> _sendGoogleUserDataToBackend({
+    required GoogleSignInAccount account,
+  }) async {
     try {
-      print('Google 인가 코드 전송 중: ${authCode.substring(0, 20)}...');
+      print('Google 사용자 데이터 전송 중...');
+      print('Provider ID: ${account.id}');
+      print('Email: ${account.email}');
+      print('Display Name: ${account.displayName}');
       
-      final response = await http.post(
-        Uri.parse('$backendUrl/api/v1/oauth/login/google'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'code': authCode, // API 명세서에 따라 인가 코드 전송
-        }),
+      final response = await ApiService.oauthLogin(
+        provider: 'google',
+        providerId: account.id,
+        email: account.email,
+        name: account.displayName ?? '',
+        profileImageUrl: account.photoUrl ?? '',
+        nickname: account.displayName ?? '',
       );
 
       print('백엔드 응답 상태: ${response.statusCode}');
-      print('백엔드 응답 내용: ${response.body}');
+      print('백엔드 응답 내용: ${response.data}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final accessToken = data['accessToken'];
-        final refreshToken = data['refreshToken'];
-        final isNewUser = data['isNewUser'] ?? false;
-
-        // JWT 토큰을 안전하게 저장
-        await _storage.write(key: 'jwt_token', value: accessToken);
-        if (refreshToken != null) {
-          await _storage.write(key: 'refresh_token', value: refreshToken);
+        final responseBody = response.data;
+        
+        // 응답이 래핑된 형식인지 직접 데이터인지 확인
+        String? accessToken;
+        String? refreshToken;
+        bool isNewUser = false;
+        
+        if (responseBody.containsKey('success') && responseBody.containsKey('data')) {
+          // 래핑된 형식: {success: true, data: {accessToken: ..., refreshToken: ..., isNewUser: ...}}
+          final success = responseBody['success'] ?? false;
+          if (success && responseBody['data'] != null) {
+            final data = responseBody['data'];
+            accessToken = data['accessToken'];
+            refreshToken = data['refreshToken'];
+            isNewUser = data['isNewUser'] ?? false;
+          } else {
+            print('백엔드 응답 실패: success=${success}, message=${responseBody['message']}');
+            return false;
+          }
+        } else if (responseBody.containsKey('accessToken')) {
+          // 직접 데이터 형식: {accessToken: ..., refreshToken: ..., isNewUser: ...}
+          accessToken = responseBody['accessToken'];
+          refreshToken = responseBody['refreshToken'];
+          isNewUser = responseBody['isNewUser'] ?? false;
+          print('직접 데이터 형식으로 응답 받음');
+        } else {
+          print('알 수 없는 응답 형식: ${responseBody.keys.toList()}');
+          return false;
         }
 
-        print('Google 로그인 성공 - 신규 사용자: $isNewUser');
-        return true;
+        if (accessToken != null) {
+          // JWT 토큰을 안전하게 저장
+          await _storage.write(key: 'jwt_token', value: accessToken);
+          if (refreshToken != null) {
+            await _storage.write(key: 'refresh_token', value: refreshToken);
+          }
+
+          // 사용자 정보 저장
+          final userInfo = UserInfo(
+            provider: 'google',
+            providerId: account.id,
+            email: account.email,
+            name: account.displayName ?? '',
+            profileImageUrl: account.photoUrl ?? '',
+            nickname: account.displayName ?? '',
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            isNewUser: isNewUser,
+          );
+          await UserService.saveUserInfo(userInfo);
+
+          print('Google 로그인 성공 - 신규 사용자: $isNewUser');
+          return true;
+        } else {
+          print('accessToken을 찾을 수 없습니다');
+          return false;
+        }
       } else {
-        print('백엔드 응답 오류: ${response.statusCode} - ${response.body}');
+        print('백엔드 응답 오류: ${response.statusCode} - ${response.data}');
         return false;
       }
     } catch (e) {
@@ -221,33 +251,98 @@ class OAuthService {
   // 백엔드에 인가 코드를 보내고 JWT 토큰 받기 (Kakao, Naver용)
   static Future<bool> _exchangeCodeForToken(String code) async {
     try {
-      final response = await http.post(
-        Uri.parse('$backendUrl/api/oauth/token'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'code': code,
-          'redirect_uri': 'coolcool://oauth/callback',
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final jwtToken = data['access_token'];
-        final refreshToken = data['refresh_token'];
-
-        // JWT 토큰을 안전하게 저장
-        await _storage.write(key: 'jwt_token', value: jwtToken);
-        if (refreshToken != null) {
-          await _storage.write(key: 'refresh_token', value: refreshToken);
-        }
-
-        return true;
+      // 먼저 인가 코드로 OAuth 제공자에서 사용자 정보를 가져옴
+      final userInfo = await _getUserInfoFromProvider(code);
+      if (userInfo == null) {
+        return false;
       }
 
-      return false;
+      // 새로운 API 형식으로 백엔드에 전송
+      final response = await ApiService.oauthLogin(
+        provider: userInfo['provider'],
+        providerId: userInfo['providerId'],
+        email: userInfo['email'],
+        name: userInfo['name'],
+        profileImageUrl: userInfo['profileImageUrl'],
+        nickname: userInfo['nickname'],
+      );
+
+      print('백엔드 응답 상태: ${response.statusCode}');
+      print('백엔드 응답 내용: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final responseBody = response.data;
+        
+        // 응답이 래핑된 형식인지 직접 데이터인지 확인
+        String? accessToken;
+        String? refreshToken;
+        bool isNewUser = false;
+        
+        if (responseBody.containsKey('success') && responseBody.containsKey('data')) {
+          // 래핑된 형식
+          final success = responseBody['success'] ?? false;
+          if (success && responseBody['data'] != null) {
+            final data = responseBody['data'];
+            accessToken = data['accessToken'];
+            refreshToken = data['refreshToken'];
+            isNewUser = data['isNewUser'] ?? false;
+          } else {
+            print('백엔드 응답 실패: success=${success}, message=${responseBody['message']}');
+            return false;
+          }
+        } else if (responseBody.containsKey('accessToken')) {
+          // 직접 데이터 형식
+          accessToken = responseBody['accessToken'];
+          refreshToken = responseBody['refreshToken'];
+          isNewUser = responseBody['isNewUser'] ?? false;
+          print('직접 데이터 형식으로 응답 받음');
+        } else {
+          print('알 수 없는 응답 형식: ${responseBody.keys.toList()}');
+          return false;
+        }
+
+        if (accessToken != null) {
+          // JWT 토큰을 안전하게 저장
+          await _storage.write(key: 'jwt_token', value: accessToken);
+          if (refreshToken != null) {
+            await _storage.write(key: 'refresh_token', value: refreshToken);
+          }
+
+          print('OAuth 로그인 성공 - 신규 사용자: $isNewUser');
+          return true;
+        } else {
+          print('accessToken을 찾을 수 없습니다');
+          return false;
+        }
+      } else {
+        print('백엔드 응답 오류: ${response.statusCode} - ${response.data}');
+        return false;
+      }
     } catch (e) {
       print('Token exchange error: $e');
       return false;
+    }
+  }
+
+  // OAuth 제공자에서 사용자 정보 가져오기 (Kakao, Naver용)
+  static Future<Map<String, dynamic>?> _getUserInfoFromProvider(String code) async {
+    try {
+      // 이 부분은 실제 구현에서는 각 OAuth 제공자의 API를 호출해야 합니다.
+      // 현재는 예시로 기본값을 반환합니다.
+      // 실제로는 code를 사용해서 access_token을 받고, 그 토큰으로 사용자 정보를 가져와야 합니다.
+      
+      // TODO: 실제 Kakao/Naver API 호출 구현 필요
+      return {
+        'provider': 'kakao', // 또는 'naver'
+        'providerId': 'temp_provider_id',
+        'email': 'temp@example.com',
+        'name': '임시 사용자',
+        'profileImageUrl': '',
+        'nickname': '임시닉네임',
+      };
+    } catch (e) {
+      print('사용자 정보 가져오기 실패: $e');
+      return null;
     }
   }
 

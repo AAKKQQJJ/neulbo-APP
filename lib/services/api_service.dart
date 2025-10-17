@@ -31,6 +31,50 @@ class ApiService {
     );
   }
 
+  /// === 인증 관련 API ===
+  
+  /// OAuth 로그인
+  static Future<Response> oauthLogin({
+    required String provider,
+    required String providerId,
+    required String email,
+    required String name,
+    required String profileImageUrl,
+    required String nickname,
+  }) async {
+    try {
+      final Map<String, dynamic> requestData = {
+        'provider': provider,
+        'providerId': providerId,
+        'email': email,
+        'name': name,
+        'profileImageUrl': profileImageUrl,
+        'nickname': nickname,
+      };
+      
+      print('ApiService - 전송할 데이터: $requestData');
+      print('ApiService - 요청 URL: ${_dio.options.baseUrl}/oauth/login');
+      print('ApiService - Content-Type: ${_dio.options.headers['Content-Type']}');
+      
+      final response = await _dio.post('/oauth/login', data: requestData);
+      print('ApiService - 응답 성공: ${response.statusCode}');
+      return response;
+    } catch (error) {
+      print('ApiService - OAuth 로그인 실패: $error');
+      
+      // DioException인 경우 더 자세한 정보 출력
+      if (error is DioException) {
+        print('ApiService - 에러 타입: ${error.type}');
+        print('ApiService - 상태 코드: ${error.response?.statusCode}');
+        print('ApiService - 에러 메시지: ${error.message}');
+        print('ApiService - 응답 데이터: ${error.response?.data}');
+        print('ApiService - 요청 헤더: ${error.requestOptions.headers}');
+      }
+      
+      rethrow;
+    }
+  }
+
   // 예시 API 호출
   static Future<Response> getUserProfile() async {
     return await _dio.get('/user/profile');

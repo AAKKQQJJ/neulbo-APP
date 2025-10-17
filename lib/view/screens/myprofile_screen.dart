@@ -1,8 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../const/design_constants.dart';
+import '../../services/user_service.dart';
+import '../../services/oauth_service.dart';
 
-class MyprofileScreen extends StatelessWidget {
+class MyprofileScreen extends StatefulWidget {
   const MyprofileScreen({super.key});
+
+  @override
+  State<MyprofileScreen> createState() => _MyprofileScreenState();
+}
+
+class _MyprofileScreenState extends State<MyprofileScreen> {
+  String _nickname = '사용자';
+  String _email = '';
+  String _profileImageUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    await UserService.loadUserInfo();
+    setState(() {
+      _nickname = UserService.getUserNickname();
+      _email = UserService.getUserEmail();
+      _profileImageUrl = UserService.getUserProfileImageUrl();
+    });
+  }
+
+  Future<void> _handleLogout() async {
+    try {
+      await OAuthService.logout();
+      await UserService.clearUserInfo();
+      if (mounted) {
+        context.go('/login');
+      }
+    } catch (e) {
+      print('로그아웃 에러: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('로그아웃에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,12 +87,24 @@ class MyprofileScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
-                  children: const [
-                    CircleAvatar(radius: 36, backgroundColor: Colors.black12),
-                    SizedBox(height: 12),
-                    Text('사용자 이름', style: TextStyle(fontWeight: FontWeight.bold)),
-                    SizedBox(height: 4),
-                    Text('user@email.com'),
+                  children: [
+                    CircleAvatar(
+                      radius: 36,
+                      backgroundColor: Colors.black12,
+                      backgroundImage: _profileImageUrl.isNotEmpty 
+                          ? NetworkImage(_profileImageUrl) 
+                          : null,
+                      child: _profileImageUrl.isEmpty 
+                          ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _nickname,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(_email),
                   ],
                 ),
               ),
@@ -58,7 +117,12 @@ class MyprofileScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     _buildTile(Icons.health_and_safety, '건강 연동', 'HealthKit 연결됨'),
                     const SizedBox(height: 8),
-                    _buildTile(Icons.logout, '로그아웃', '계정에서 로그아웃'),
+                    _buildTile(
+                      Icons.logout, 
+                      '로그아웃', 
+                      '계정에서 로그아웃',
+                      onTap: _handleLogout,
+                    ),
                   ],
                 ),
               ),
@@ -69,29 +133,32 @@ class MyprofileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTile(IconData icon, String title, String subtitle) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(color: Colors.black54, fontSize: 12)),
-              ],
+  Widget _buildTile(IconData icon, String title, String subtitle, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.chevron_right),
-        ],
+            const Icon(Icons.chevron_right),
+          ],
+        ),
       ),
     );
   }

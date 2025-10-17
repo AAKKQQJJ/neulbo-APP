@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/oauth_button_config.dart';
 import '../const/login_constants.dart';
 import '../services/oauth_service.dart';
@@ -17,7 +18,25 @@ class OAuthButton extends StatelessWidget {
       width: double.infinity,
       height: LoginConstants.buttonHeight,
       child: ElevatedButton(
-        onPressed: () => OAuthService.startOAuthLogin(config.provider),
+        onPressed: () async {
+          try {
+            final success = await OAuthService.startOAuthLogin(config.provider);
+            if (success && context.mounted) {
+              // 로그인 성공 시 홈 화면(바텀 네비게이션)으로 이동
+              context.go('/btNavi');
+            }
+          } catch (e) {
+            print('로그인 에러: $e');
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: config.backgroundColor,
           foregroundColor: config.textColor,
