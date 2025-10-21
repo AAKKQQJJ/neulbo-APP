@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:neulbo/const/routes.dart';
 
 import 'services/api_service.dart';
@@ -8,6 +9,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   ApiService.initialize();
   await dotenv.load(fileName: ".env");
+  
+  // Kakao SDK 초기화
+  KakaoSdk.init(
+    nativeAppKey: dotenv.env['KAKAO_NATIVE_APP_KEY'] ?? '',
+  );
+  
   runApp(MyApp());
 }
 

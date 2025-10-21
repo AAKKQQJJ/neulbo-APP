@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -38,9 +40,9 @@ class OAuthService {
   // OAuth 제공자별 설정 (Kakao, Naver용)
   static Map<String, Map<String, String>> get oauthConfigs => {
     'kakao': {
-      'authUrl': 'https://kauth.kakao.com/oauth/authorize',
+      'authUrl': 'https://kauth.kakao.com/oauth/authorize	',
       'clientId': kakaoClientId,
-      'scope': 'profile_nickname profile_image account_email',
+      'scope': 'profile_nickname profile_image',
     },
     'naver': {
       'authUrl': 'https://nid.naver.com/oauth2.0/authorize',
@@ -55,9 +57,9 @@ class OAuthService {
       case 'google':
         return await _handleGoogleSignIn();
       case 'kakao':
+        return await _handleKakaoSignIn();
       case 'naver':
-        await _handleTraditionalOAuth(provider);
-        return false; // 딥링크로 처리되므로 여기서는 false 반환
+        return await _handleNaverSignIn();
       default:
         throw Exception('Unsupported OAuth provider: $provider');
     }
@@ -190,96 +192,157 @@ class OAuthService {
     }
   }
 
-  // 기존 방식 OAuth (Kakao, Naver용)
-  static Future<void> _handleTraditionalOAuth(String provider) async {
-    final config = oauthConfigs[provider];
-    if (config == null) {
-      throw Exception('Unsupported OAuth provider: $provider');
-    }
-
-    final redirectUri = 'coolcool://oauth/callback';
-    final state = _generateRandomString(32);
-
-    // state 저장 (나중에 검증용)
-    await _storage.write(key: 'oauth_state', value: state);
-
-    final authUrl = Uri.parse(config['authUrl']!).replace(queryParameters: {
-      'client_id': config['clientId']!,
-      'redirect_uri': redirectUri,
-      'response_type': 'code',
-      'scope': config['scope']!,
-      'state': state,
-    });
-
-    // 외부 브라우저로 OAuth 인증 페이지 열기
-    if (await canLaunchUrl(authUrl)) {
-      await launchUrl(authUrl, mode: LaunchMode.externalApplication);
-    } else {
-      throw Exception('Could not launch OAuth URL');
-    }
-  }
-
-  // 딥링크로 돌아온 인가 코드 처리 (Kakao, Naver용)
-  static Future<bool> handleOAuthCallback(Uri uri) async {
+  // Kakao Sign-In 처리
+  static Future<bool> _handleKakaoSignIn() async {
     try {
-      final code = uri.queryParameters['code'];
-      final state = uri.queryParameters['state'];
-      final storedState = await _storage.read(key: 'oauth_state');
-
-      // State 검증 (CSRF 공격 방지)
-      if (state != storedState) {
-        throw Exception('Invalid state parameter');
+      bool isInstalled = await isKakaoTalkInstalled();
+      OAuthToken token;
+      
+      if (isInstalled) {
+        try {
+          token = await UserApi.instance.loginWithKakaoTalk();
+          print('카카오톡으로 로그인 성공');
+        } catch (error) {
+          print('카카오톡으로 로그인 실패, 카카오계정으로 로그인 시도: $error');
+          token = await UserApi.instance.loginWithKakaoAccount();
+        }
+      } else {
+        token = await UserApi.instance.loginWithKakaoAccount();
+        print('카카오계정으로 로그인 성공');
       }
-
-      if (code != null) {
-        // 백엔드로 인가 코드 전송하여 JWT 받기
-        final success = await _exchangeCodeForToken(code);
-
-        // 저장된 state 제거
-        await _storage.delete(key: 'oauth_state');
-
-        return success;
-      }
-
-      return false;
-    } catch (e) {
-      print('OAuth callback error: $e');
-      return false;
-    }
-  }
-
-  // 백엔드에 인가 코드를 보내고 JWT 토큰 받기 (Kakao, Naver용)
-  static Future<bool> _exchangeCodeForToken(String code) async {
-    try {
-      // 먼저 인가 코드로 OAuth 제공자에서 사용자 정보를 가져옴
-      final userInfo = await _getUserInfoFromProvider(code);
-      if (userInfo == null) {
+      
+      final User user = await UserApi.instance.me();
+      print('카카오 사용자 정보: ${user.kakaoAccount?.email}');
+      
+      final success = await _sendKakaoUserDataToBackend(user);
+      
+      if (success) {
+        print('Kakao 로그인 성공');
+        return true;
+      } else {
+        print('백엔드 인증 실패');
+        await UserApi.instance.logout();
         return false;
       }
+    } catch (error) {
+      print('Kakao Sign-In 에러: $error');
+      return false;
+    }
+  }
 
-      // 새로운 API 형식으로 백엔드에 전송
+  // Kakao 사용자 데이터를 백엔드로 전송
+  static Future<bool> _sendKakaoUserDataToBackend(User user) async {
+    try {
+      print('Kakao 사용자 데이터 전송 중...');
+      final kakaoAccount = user.kakaoAccount;
+      final profile = kakaoAccount?.profile;
+      
       final response = await ApiService.oauthLogin(
-        provider: userInfo['provider'],
-        providerId: userInfo['providerId'],
-        email: userInfo['email'],
-        name: userInfo['name'],
-        profileImageUrl: userInfo['profileImageUrl'],
-        nickname: userInfo['nickname'],
+        provider: 'kakao',
+        providerId: user.id.toString(),
+        email: kakaoAccount?.email ?? '',
+        name: profile?.nickname ?? '',
+        profileImageUrl: profile?.profileImageUrl ?? '',
+        nickname: profile?.nickname ?? '',
       );
 
+      return await _processOAuthResponse(
+        response: response,
+        provider: 'kakao',
+        providerId: user.id.toString(),
+        email: kakaoAccount?.email ?? '',
+        name: profile?.nickname ?? '',
+        profileImageUrl: profile?.profileImageUrl ?? '',
+        nickname: profile?.nickname ?? '',
+      );
+    } catch (e) {
+      print('Kakao 백엔드 인증 에러: $e');
+      return false;
+    }
+  }
+
+  // Naver Sign-In 처리
+  static Future<bool> _handleNaverSignIn() async {
+    try {
+      final NaverLoginResult result = await FlutterNaverLogin.logIn();
+      
+      if (result.status == NaverLoginStatus.loggedIn) {
+        print('네이버 로그인 성공');
+        
+        final NaverAccountResult account = await FlutterNaverLogin.currentAccount();
+        print('네이버 사용자 정보: ${account.email}');
+        
+        final success = await _sendNaverUserDataToBackend(account);
+        
+        if (success) {
+          print('Naver 로그인 성공');
+          return true;
+        } else {
+          print('백엔드 인증 실패');
+          await FlutterNaverLogin.logOut();
+          return false;
+        }
+      } else {
+        print('네이버 로그인 취소 또는 실패: ${result.status}');
+        return false;
+      }
+    } catch (error) {
+      print('Naver Sign-In 에러: $error');
+      return false;
+    }
+  }
+
+  // Naver 사용자 데이터를 백엔드로 전송
+  static Future<bool> _sendNaverUserDataToBackend(NaverAccountResult account) async {
+    try {
+      print('Naver 사용자 데이터 전송 중...');
+      
+      final response = await ApiService.oauthLogin(
+        provider: 'naver',
+        providerId: account.id,
+        email: account.email,
+        name: account.name,
+        profileImageUrl: account.profileImage ?? '',
+        nickname: account.nickname ?? account.name,
+      );
+
+      return await _processOAuthResponse(
+        response: response,
+        provider: 'naver',
+        providerId: account.id,
+        email: account.email,
+        name: account.name,
+        profileImageUrl: account.profileImage ?? '',
+        nickname: account.nickname ?? account.name,
+      );
+    } catch (e) {
+      print('Naver 백엔드 인증 에러: $e');
+      return false;
+    }
+  }
+
+  // OAuth 응답 공통 처리
+  static Future<bool> _processOAuthResponse({
+    required dynamic response,
+    required String provider,
+    required String providerId,
+    required String email,
+    required String name,
+    required String profileImageUrl,
+    required String nickname,
+  }) async {
+    try {
       print('백엔드 응답 상태: ${response.statusCode}');
       print('백엔드 응답 내용: ${response.data}');
 
       if (response.statusCode == 200) {
         final responseBody = response.data;
         
-        // 응답이 래핑된 형식인지 직접 데이터인지 확인
         String? accessToken;
         String? refreshToken;
         bool isNewUser = false;
         
         if (responseBody.containsKey('success') && responseBody.containsKey('data')) {
-          // 래핑된 형식
           final success = responseBody['success'] ?? false;
           if (success && responseBody['data'] != null) {
             final data = responseBody['data'];
@@ -291,11 +354,9 @@ class OAuthService {
             return false;
           }
         } else if (responseBody.containsKey('accessToken')) {
-          // 직접 데이터 형식
           accessToken = responseBody['accessToken'];
           refreshToken = responseBody['refreshToken'];
           isNewUser = responseBody['isNewUser'] ?? false;
-          print('직접 데이터 형식으로 응답 받음');
         } else {
           print('알 수 없는 응답 형식: ${responseBody.keys.toList()}');
           return false;
@@ -308,7 +369,21 @@ class OAuthService {
             await _storage.write(key: 'refresh_token', value: refreshToken);
           }
 
-          print('OAuth 로그인 성공 - 신규 사용자: $isNewUser');
+          // 사용자 정보 저장
+          final userInfo = UserInfo(
+            provider: provider,
+            providerId: providerId,
+            email: email,
+            name: name,
+            profileImageUrl: profileImageUrl,
+            nickname: nickname,
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            isNewUser: isNewUser,
+          );
+          await UserService.saveUserInfo(userInfo);
+
+          print('$provider 로그인 성공 - 신규 사용자: $isNewUser');
           return true;
         } else {
           print('accessToken을 찾을 수 없습니다');
@@ -319,30 +394,8 @@ class OAuthService {
         return false;
       }
     } catch (e) {
-      print('Token exchange error: $e');
+      print('OAuth 응답 처리 에러: $e');
       return false;
-    }
-  }
-
-  // OAuth 제공자에서 사용자 정보 가져오기 (Kakao, Naver용)
-  static Future<Map<String, dynamic>?> _getUserInfoFromProvider(String code) async {
-    try {
-      // 이 부분은 실제 구현에서는 각 OAuth 제공자의 API를 호출해야 합니다.
-      // 현재는 예시로 기본값을 반환합니다.
-      // 실제로는 code를 사용해서 access_token을 받고, 그 토큰으로 사용자 정보를 가져와야 합니다.
-      
-      // TODO: 실제 Kakao/Naver API 호출 구현 필요
-      return {
-        'provider': 'kakao', // 또는 'naver'
-        'providerId': 'temp_provider_id',
-        'email': 'temp@example.com',
-        'name': '임시 사용자',
-        'profileImageUrl': '',
-        'nickname': '임시닉네임',
-      };
-    } catch (e) {
-      print('사용자 정보 가져오기 실패: $e');
-      return null;
     }
   }
 
@@ -355,7 +408,25 @@ class OAuthService {
   static Future<void> logout() async {
     await _storage.delete(key: 'jwt_token');
     await _storage.delete(key: 'refresh_token');
-    await _googleSignIn.signOut(); // Google 로그아웃도 함께
+    
+    // 각 OAuth 제공자 로그아웃
+    try {
+      await _googleSignIn.signOut();
+    } catch (e) {
+      print('Google 로그아웃 에러: $e');
+    }
+    
+    try {
+      await UserApi.instance.logout();
+    } catch (e) {
+      print('Kakao 로그아웃 에러: $e');
+    }
+    
+    try {
+      await FlutterNaverLogin.logOut();
+    } catch (e) {
+      print('Naver 로그아웃 에러: $e');
+    }
   }
 
   // 랜덤 문자열 생성 (state 파라미터용)

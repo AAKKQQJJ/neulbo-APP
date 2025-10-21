@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../models/oauth_button_config.dart';
 import '../const/login_constants.dart';
 import '../services/oauth_service.dart';
+import '../services/user_service.dart';
 
 class OAuthButton extends StatelessWidget {
   final OAuthButtonConfig config;
@@ -22,8 +23,26 @@ class OAuthButton extends StatelessWidget {
           try {
             final success = await OAuthService.startOAuthLogin(config.provider);
             if (success && context.mounted) {
-              // 로그인 성공 시 홈 화면(바텀 네비게이션)으로 이동
-              context.go('/btNavi');
+              // 사용자 정보 불러오기
+              final userInfo = await UserService.loadUserInfo();
+              
+              if (userInfo != null) {
+                // 신규 사용자인 경우 추가 정보 입력 화면으로 이동
+                // 기존 사용자인 경우 홈 화면으로 이동
+                if (userInfo.isNewUser) {
+                  print('신규 사용자: 추가 정보 입력 화면으로 이동');
+                  // TODO: 추가 정보 입력 화면이 있다면 해당 경로로 이동
+                  // context.go('/additional-info');
+                  // 현재는 추가 정보 입력 화면이 없으므로 홈 화면으로 이동
+                  context.go('/btNavi');
+                } else {
+                  print('기존 사용자: 홈 화면으로 이동');
+                  context.go('/btNavi');
+                }
+              } else {
+                // 사용자 정보가 없으면 홈 화면으로 이동 (기본 동작)
+                context.go('/btNavi');
+              }
             }
           } catch (e) {
             print('로그인 에러: $e');

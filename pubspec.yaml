@@ -49,6 +49,8 @@ dependencies:
   oauth2: ^2.0.2
   url_launcher: ^6.1.0
   google_sign_in: ^6.1.0
+  kakao_flutter_sdk_user: ^1.9.5
+  flutter_naver_login: ^1.8.0
 
   # 로컬 저장소 (JWT 토큰 저장용)
   shared_preferences: ^2.2.0

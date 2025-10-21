@@ -13,6 +13,13 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          // OAuth 로그인 엔드포인트는 기존 토큰을 포함하지 않음
+          if (options.path == '/oauth/login') {
+            print('ApiService - OAuth 로그인 요청: 기존 토큰 제외');
+            handler.next(options);
+            return;
+          }
+          
           final token = await OAuthService.getJwtToken();
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
