@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -264,30 +265,61 @@ class OAuthService {
   // Naver Sign-In 처리
   static Future<bool> _handleNaverSignIn() async {
     try {
-      final NaverLoginResult result = await FlutterNaverLogin.logIn();
+      print('=== 네이버 로그인 시작 ===');
+      print('네이버 Client ID: $naverClientId');
+      print('네이버 Client Secret: ${naverClientId.isNotEmpty ? "설정됨" : "미설정"}');
+      print('FlutterNaverLogin.logIn() 호출 중...');
+      
+      // 타임아웃 추가 (15초로 늘림)
+      final NaverLoginResult result = await FlutterNaverLogin.logIn().timeout(
+        Duration(seconds: 15),
+        onTimeout: () {
+          print('⏱️ 네이버 로그인 타임아웃 (15초)!');
+          print('');
+          print('=== 문제 진단 ===');
+          print('1. 앱이 완전히 재빌드되지 않았을 가능성');
+          print('2. Info.plist의 NaverThirdPartyConstantsForApp이 적용되지 않음');
+          print('3. 네이버 개발자 센터 Bundle ID 불일치');
+          print('');
+          print('해결 방법:');
+          print('- 시뮬레이터에서 앱 삭제');
+          print('- flutter clean && flutter pub get');
+          print('- cd ios && rm -rf Pods Podfile.lock && pod install && cd ..');
+          print('- flutter run');
+          throw TimeoutException('네이버 로그인 타임아웃');
+        },
+      );
+      print('✅ FlutterNaverLogin.logIn() 응답 받음!');
+      print('네이버 로그인 결과 status: ${result.status}');
+      print('네이버 로그인 전체 결과: $result');
       
       if (result.status == NaverLoginStatus.loggedIn) {
-        print('네이버 로그인 성공');
+        print('✅ 네이버 로그인 성공!');
         
         final NaverAccountResult account = await FlutterNaverLogin.currentAccount();
-        print('네이버 사용자 정보: ${account.email}');
+        print('네이버 사용자 ID: ${account.id}');
+        print('네이버 사용자 이메일: ${account.email}');
+        print('네이버 사용자 이름: ${account.name}');
         
         final success = await _sendNaverUserDataToBackend(account);
         
         if (success) {
-          print('Naver 로그인 성공');
+          print('✅ 네이버 백엔드 인증 성공!');
           return true;
         } else {
-          print('백엔드 인증 실패');
+          print('❌ 백엔드 인증 실패');
           await FlutterNaverLogin.logOut();
           return false;
         }
       } else {
-        print('네이버 로그인 취소 또는 실패: ${result.status}');
+        print('❌ 네이버 로그인 취소 또는 실패');
+        print('로그인 상태: ${result.status}');
         return false;
       }
-    } catch (error) {
-      print('Naver Sign-In 에러: $error');
+    } catch (error, stackTrace) {
+      print('❌ Naver Sign-In 에러 발생!');
+      print('에러: $error');
+      print('스택 트레이스: $stackTrace');
       return false;
     }
   }
