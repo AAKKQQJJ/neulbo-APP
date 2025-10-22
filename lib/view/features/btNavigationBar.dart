@@ -42,27 +42,77 @@ class _BtNavigationBarState extends State<BtNavigationBar> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
+      extendBody: true,
       body: IndexedStack(
         index: _selectedIndex,
         children: _Tap,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        /// 바텀 탭바 스타일 ///
-        backgroundColor: Colors.white,
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.grey,
-        unselectedIconTheme: IconThemeData(color: Colors.grey),
-        showUnselectedLabels: true,
-        currentIndex: _selectedIndex,
-        selectedIconTheme: IconThemeData(color: Colors.blueAccent),
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_add_alt_1_sharp), label: '커뮤니티'),
-          BottomNavigationBarItem(icon: Icon(Icons.bedtime_sharp), label: '수면모드'),
-          BottomNavigationBarItem(icon: Icon(Icons.support_agent_outlined), label: '수면비서'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: '내 정보'),
-        ],
+      bottomNavigationBar: _buildGradientBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildGradientBottomNavigationBar() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFF624BAC),
+            Color(0xFF7B68B8),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(25),
+          topRight: Radius.circular(25),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 4),
+          child: ClipRRect(
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(25),
+              topRight: Radius.circular(25),
+            ),
+            child: BottomNavigationBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.white.withOpacity(0.6),
+              selectedFontSize: 12,
+              unselectedFontSize: 12,
+              showUnselectedLabels: true,
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home),
+                  label: '홈',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_add_alt_1_sharp),
+                  label: '커뮤니티',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.bedtime_sharp),
+                  label: '수면모드',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.support_agent_outlined),
+                  label: '수면비서',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person),
+                  label: '내 정보',
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
