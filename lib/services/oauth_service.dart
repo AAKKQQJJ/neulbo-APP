@@ -212,10 +212,30 @@ class OAuthService {
         print('카카오계정으로 로그인 성공');
       }
       
-      final User user = await UserApi.instance.me();
-      print('카카오 사용자 정보: ${user.kakaoAccount?.email}');
+       final User user = await UserApi.instance.me();
+       print('카카오 사용자 정보 상세:');
+       print('- ID: ${user.id}');
+       print('- 이메일: ${user.kakaoAccount?.email}');
+       print('- 이메일 동의: ${user.kakaoAccount?.emailNeedsAgreement}');
+       print('- 닉네임: ${user.kakaoAccount?.profile?.nickname}');
+       print('- 프로필 이미지: ${user.kakaoAccount?.profile?.profileImageUrl}');
+       
+       // 이메일 권한이 없는 경우 추가 동의 요청
+       String email = user.kakaoAccount?.email ?? '';
+       if (email.isEmpty && user.kakaoAccount?.emailNeedsAgreement == true) {
+         print('이메일 권한 추가 동의 요청 중...');
+         try {
+           final OAuthToken newToken = await UserApi.instance.loginWithNewScopes(['account_email']);
+           final User updatedUser = await UserApi.instance.me();
+           email = updatedUser.kakaoAccount?.email ?? '';
+           print('추가 동의 후 이메일: $email');
+         } catch (e) {
+           print('이메일 권한 동의 실패: $e');
+           // 이메일 없이도 진행
+         }
+       }
       
-      final success = await _sendKakaoUserDataToBackend(user);
+      final success = await _sendKakaoUserDataToBackend(user, email);
       
       if (success) {
         print('Kakao 로그인 성공');
@@ -231,27 +251,33 @@ class OAuthService {
     }
   }
 
-  // Kakao 사용자 데이터를 백엔드로 전송
-  static Future<bool> _sendKakaoUserDataToBackend(User user) async {
-    try {
-      print('Kakao 사용자 데이터 전송 중...');
-      final kakaoAccount = user.kakaoAccount;
-      final profile = kakaoAccount?.profile;
-      
-      final response = await ApiService.oauthLogin(
-        provider: 'kakao',
-        providerId: user.id.toString(),
-        email: kakaoAccount?.email ?? '',
-        name: profile?.nickname ?? '',
-        profileImageUrl: profile?.profileImageUrl ?? '',
-        nickname: profile?.nickname ?? '',
-      );
+   // Kakao 사용자 데이터를 백엔드로 전송
+   static Future<bool> _sendKakaoUserDataToBackend(User user, String email) async {
+     try {
+       print('Kakao 사용자 데이터 전송 중...');
+       final kakaoAccount = user.kakaoAccount;
+       final profile = kakaoAccount?.profile;
+       
+       print('전송할 카카오 데이터:');
+       print('- Provider ID: ${user.id}');
+       print('- Email: $email');
+       print('- Name: ${profile?.nickname ?? ''}');
+       print('- Profile Image: ${profile?.profileImageUrl ?? ''}');
+       
+       final response = await ApiService.oauthLogin(
+         provider: 'kakao',
+         providerId: user.id.toString(),
+         email: email,
+         name: profile?.nickname ?? '',
+         profileImageUrl: profile?.profileImageUrl ?? '',
+         nickname: profile?.nickname ?? '',
+       );
 
       return await _processOAuthResponse(
         response: response,
         provider: 'kakao',
         providerId: user.id.toString(),
-        email: kakaoAccount?.email ?? '',
+        email: email,
         name: profile?.nickname ?? '',
         profileImageUrl: profile?.profileImageUrl ?? '',
         nickname: profile?.nickname ?? '',

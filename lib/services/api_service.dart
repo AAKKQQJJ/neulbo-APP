@@ -62,9 +62,11 @@ class ApiService {
       print('ApiService - 전송할 데이터: $requestData');
       print('ApiService - 요청 URL: ${_dio.options.baseUrl}/oauth/login');
       print('ApiService - Content-Type: ${_dio.options.headers['Content-Type']}');
+      print('ApiService - OAuth 로그인 요청 시작...');
       
       final response = await _dio.post('/oauth/login', data: requestData);
       print('ApiService - 응답 성공: ${response.statusCode}');
+      print('ApiService - 응답 데이터: ${response.data}');
       return response;
     } catch (error) {
       print('ApiService - OAuth 로그인 실패: $error');

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:health/health.dart';
 
@@ -6,6 +7,7 @@ import '../../const/design_constants.dart';
 import '../../models/sleep_data.dart';
 import '../../services/health_service.dart';
 import '../../services/sleep_data_service.dart';
+import '../../services/user_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,13 +21,60 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = true;
   SleepData? todaySleepData;
   List<HealthDataPoint> rawSleepDataPoints = [];
+  String userNickname = '사용자';
   final HealthService _healthService = HealthService();
   final SleepDataService _sleepDataService = SleepDataService();
 
   @override
   void initState() {
     super.initState();
+    print('HomeScreen - 배경 이미지 경로: ${DesignConstants.defaultBackgroundPath}');
+    _loadUserInfo();
     _checkPermissionAndLoadData();
+  }
+
+  Future<void> _loadUserInfo() async {
+    try {
+      await UserService.loadUserInfo();
+      setState(() {
+        userNickname = UserService.getUserNickname();
+        if (userNickname.isEmpty) {
+          userNickname = '사용자';
+        }
+      });
+      print('사용자 닉네임 로드됨: $userNickname');
+    } catch (e) {
+      print('사용자 정보 로드 실패: $e');
+      setState(() {
+        userNickname = '사용자';
+      });
+    }
+  }
+
+  // 시간대별 인사말을 반환하는 메서드
+  Map<String, String> _getTimeBasedGreeting() {
+    final now = DateTime.now();
+    final hour = now.hour;
+    
+    if (hour >= 4 && hour < 11) {
+      // 아침 (AM 04:00 ~ AM 11:00)
+      return {
+        'greeting': '좋은 아침이에요! ☀️',
+        'subtext': '상쾌하게 하루를 시작해볼까요?'
+      };
+    } else if (hour >= 11 && hour < 17) {
+      // 점심 (AM 11:00 ~ PM 05:00)
+      return {
+        'greeting': '점심시간이 찾아왔어요. 🍽️',
+        'subtext': '잠시 쉬어가며 에너지 가득 채워보세요!'
+      };
+    } else {
+      // 저녁 (PM 05:00 ~ AM 04:00)
+      return {
+        'greeting': '평화로운 저녁이에요. 🌙',
+        'subtext': '하루의 피로를 내려놓고 편히 쉬어요.'
+      };
+    }
   }
 
   Future<void> _checkPermissionAndLoadData() async {
@@ -62,10 +111,12 @@ class _HomeScreenState extends State<HomeScreen> {
       if (sleepDataList.isNotEmpty) {
         sleepDataList.sort((a, b) => b.wakeTime.compareTo(a.wakeTime));
         final SleepData mostRecentSleep = sleepDataList.first;
-        print('HomeScreen - 가장 최근 수면: 취침 ${mostRecentSleep.bedTime}, 기상 ${mostRecentSleep.wakeTime}');
+        print(
+            'HomeScreen - 가장 최근 수면: 취침 ${mostRecentSleep.bedTime}, 기상 ${mostRecentSleep.wakeTime}');
         final List<HealthDataPoint> relevantRawData = rawData.where((point) {
-          return point.dateFrom.isAfter(mostRecentSleep.bedTime.subtract(const Duration(hours: 1))) &&
-                 point.dateTo.isBefore(mostRecentSleep.wakeTime.add(const Duration(hours: 1)));
+          return point.dateFrom
+                  .isAfter(mostRecentSleep.bedTime.subtract(const Duration(hours: 1))) &&
+              point.dateTo.isBefore(mostRecentSleep.wakeTime.add(const Duration(hours: 1)));
         }).toList();
         print('HomeScreen - 관련 원시 데이터 포인트 수: ${relevantRawData.length}');
         setState(() {
@@ -88,53 +139,92 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
-    return Container(
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage(DesignConstants.homeScreenImagePath),
-          fit: BoxFit.cover,
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent, // 상태바 배경을 투명하게
+        statusBarIconBrightness: Brightness.light, // 아이콘을 밝게 (흰색)
+        statusBarBrightness: Brightness.dark, // iOS용 설정
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 12),
-                  _buildGreeting(),
-                  const SizedBox(height: 24),
-                  isLoading
-                      ? _buildLoadingCard()
-                      : hasHealthPermission 
-                          ? _buildSleepDataCard(screenWidth)
-                          : _buildPermissionRequestCard(),
-                  const SizedBox(height: 32),
-                  _buildWeeklyFriendsSection(),
-                  const SizedBox(height: 32),
-                  _buildChallengesSection(),
-                  const SizedBox(height: 32),
-                  _buildTodayLettersSection(),
-                  const SizedBox(height: 80),
-                ],
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        children: [
+          // 반응형 배경 이미지
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(DesignConstants.defaultBackgroundPath),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  onError: (exception, stackTrace) {
+                    print('배경 이미지 로드 실패: $exception');
+                    print('이미지 경로: ${DesignConstants.defaultBackgroundPath}');
+                    print('대신 homeScreenImagePath 사용: ${DesignConstants.homeScreenImagePath}');
+                  },
+                ),
+                // 이미지가 작을 경우를 대비한 fallback 색상
+                color: const Color(0xFF2D1B69),
+              ),
+              child: Container(
+                // 이미지 위에 약간의 오버레이 (선택사항)
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.1),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+          // 콘텐츠
+          SafeArea(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 12),
+                    _buildGreeting(),
+                    const SizedBox(height: 24),
+                    isLoading
+                        ? _buildLoadingCard()
+                        : hasHealthPermission
+                            ? _buildSleepDataCard(screenWidth)
+                            : _buildPermissionRequestCard(),
+                    const SizedBox(height: 32),
+                    _buildWeeklyFriendsSection(),
+                    const SizedBox(height: 32),
+                    _buildChallengesSection(),
+                    const SizedBox(height: 32),
+                    _buildTodayLettersSection(),
+                    const SizedBox(height: 80),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       ),
     );
   }
 
   Widget _buildGreeting() {
+    final greetingData = _getTimeBasedGreeting();
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '채원님,',
-          style: TextStyle(
+        Text(
+          '${userNickname}님,',
+          style: const TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.bold,
             fontFamily: 'malang',
@@ -142,9 +232,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
-          '좋은 아침이에요! ☀️',
-          style: TextStyle(
+        Text(
+          greetingData['greeting']!,
+          style: const TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.bold,
             fontFamily: 'malang',
@@ -152,9 +242,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          '상쾌하게 하루를 시작해볼까요?',
-          style: TextStyle(
+        Text(
+          greetingData['subtext']!,
+          style: const TextStyle(
             fontSize: 16,
             fontFamily: 'suit',
             color: Colors.white,
@@ -283,7 +373,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
     final int qualityScore = todaySleepData!.sleepQualityScore.round();
-    final Duration actualSleepDuration = todaySleepData!.wakeTime.difference(todaySleepData!.bedTime);
+    final Duration actualSleepDuration =
+        todaySleepData!.wakeTime.difference(todaySleepData!.bedTime);
     final int hours = actualSleepDuration.inHours;
     final int minutes = actualSleepDuration.inMinutes % 60;
     final String totalSleepTime = '${hours}시간 ${minutes}분';
@@ -725,27 +816,48 @@ class SleepStageGraphPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (sleepData == null || rawDataPoints.isEmpty) {
+    try {
+      if (sleepData == null || rawDataPoints.isEmpty) {
+        _drawEmptyState(canvas, size);
+        return;
+      }
+      final List<SleepSegment> segments = _processSleepData();
+      if (segments.isEmpty) {
+        _drawEmptyState(canvas, size);
+        return;
+      }
+      final DateTime startTime = sleepData!.bedTime;
+      final DateTime endTime = sleepData!.wakeTime;
+      final Duration totalDuration = endTime.difference(startTime);
+
+      // 유효하지 않은 시간 데이터 처리
+      if (totalDuration.inMinutes <= 0) {
+        _drawEmptyState(canvas, size);
+        return;
+      }
+
+      final double graphHeight = size.height * 0.6;
+      final double graphBottom = size.height * 0.75;
+      final double leftMargin = 60.0;
+      final double rightMargin = 8.0;
+      final double graphWidth = size.width - leftMargin - rightMargin;
+
+      // 유효하지 않은 크기 처리
+      if (graphWidth <= 0 || graphHeight <= 0) {
+        _drawEmptyState(canvas, size);
+        return;
+      }
+
+      _drawStageLabels(canvas, size, leftMargin, graphBottom, graphHeight);
+      _drawSleepConnections(canvas, segments, startTime, totalDuration, leftMargin, graphWidth,
+          graphBottom, graphHeight);
+      _drawSleepBars(canvas, segments, startTime, totalDuration, leftMargin, graphWidth,
+          graphBottom, graphHeight);
+      _drawTimeLabels(canvas, size, startTime, endTime, leftMargin, graphWidth, graphBottom);
+    } catch (e) {
+      print('수면 그래프 그리기 실패: $e');
       _drawEmptyState(canvas, size);
-      return;
     }
-    final List<SleepSegment> segments = _processSleepData();
-    if (segments.isEmpty) {
-      _drawEmptyState(canvas, size);
-      return;
-    }
-    final DateTime startTime = sleepData!.bedTime;
-    final DateTime endTime = sleepData!.wakeTime;
-    final Duration totalDuration = endTime.difference(startTime);
-    final double graphHeight = size.height * 0.6;
-    final double graphBottom = size.height * 0.75;
-    final double leftMargin = 60.0;
-    final double rightMargin = 8.0;
-    final double graphWidth = size.width - leftMargin - rightMargin;
-    _drawStageLabels(canvas, size, leftMargin, graphBottom, graphHeight);
-    _drawSleepConnections(canvas, segments, startTime, totalDuration, leftMargin, graphWidth, graphBottom, graphHeight);
-    _drawSleepBars(canvas, segments, startTime, totalDuration, leftMargin, graphWidth, graphBottom, graphHeight);
-    _drawTimeLabels(canvas, size, startTime, endTime, leftMargin, graphWidth, graphBottom);
   }
 
   void _drawEmptyState(Canvas canvas, Size size) {
@@ -818,7 +930,8 @@ class SleepStageGraphPainter extends CustomPainter {
     return segments;
   }
 
-  void _drawStageLabels(Canvas canvas, Size size, double leftMargin, double graphBottom, double graphHeight) {
+  void _drawStageLabels(
+      Canvas canvas, Size size, double leftMargin, double graphBottom, double graphHeight) {
     final List<String> labels = ['깊은 수면', '코어 수면', 'REM 수면', '비수면'];
     final double stageHeight = graphHeight / 4;
     final TextPainter textPainter = TextPainter(
@@ -834,7 +947,11 @@ class SleepStageGraphPainter extends CustomPainter {
         ),
       );
       textPainter.layout();
-      final double y = graphBottom - graphHeight + (i * stageHeight) + (stageHeight / 2) - (textPainter.height / 2);
+      final double y = graphBottom -
+          graphHeight +
+          (i * stageHeight) +
+          (stageHeight / 2) -
+          (textPainter.height / 2);
       textPainter.paint(canvas, Offset(4, y));
     }
   }
@@ -864,8 +981,10 @@ class SleepStageGraphPainter extends CustomPainter {
       final double nextProgress = nextOffset.inMinutes / totalDuration.inMinutes;
       final double currentX = leftMargin + (currentProgress * graphWidth);
       final double nextX = leftMargin + (nextProgress * graphWidth);
-      final double currentY = _getStageY(current.stage, graphBottom, graphHeight, stageHeight) + stageHeight / 2;
-      final double nextY = _getStageY(next.stage, graphBottom, graphHeight, stageHeight) + stageHeight / 2;
+      final double currentY =
+          _getStageY(current.stage, graphBottom, graphHeight, stageHeight) + stageHeight / 2;
+      final double nextY =
+          _getStageY(next.stage, graphBottom, graphHeight, stageHeight) + stageHeight / 2;
       if ((nextX - currentX).abs() < 10) {
         canvas.drawLine(Offset(currentX, currentY), Offset(nextX, nextY), connectionPaint);
       }
@@ -932,18 +1051,53 @@ class SleepStageGraphPainter extends CustomPainter {
         ..color = color
         ..style = PaintingStyle.fill;
       for (final segment in stageSegments) {
-        final Duration offsetFromStart = segment.startTime.difference(startTime);
-        final Duration segmentDuration = segment.endTime.difference(segment.startTime);
-        final double progressStart = offsetFromStart.inMinutes / totalDuration.inMinutes;
-        final double progressEnd = (offsetFromStart.inMinutes + segmentDuration.inMinutes) / totalDuration.inMinutes;
-        final double startX = leftMargin + (progressStart * graphWidth);
-        final double endX = leftMargin + (progressEnd * graphWidth);
-        final double width = (endX - startX).clamp(2.0, graphWidth - (startX - leftMargin));
-        final RRect rRect = RRect.fromRectAndRadius(
-          Rect.fromLTWH(startX, stageY, width, stageHeight),
-          const Radius.circular(6),
-        );
-        canvas.drawRRect(rRect, barPaint);
+        try {
+          final Duration offsetFromStart = segment.startTime.difference(startTime);
+          final Duration segmentDuration = segment.endTime.difference(segment.startTime);
+
+          // 유효하지 않은 시간 데이터 건너뛰기
+          if (segmentDuration.inMinutes <= 0 || totalDuration.inMinutes <= 0) {
+            continue;
+          }
+
+          final double progressStart = offsetFromStart.inMinutes / totalDuration.inMinutes;
+          final double progressEnd =
+              (offsetFromStart.inMinutes + segmentDuration.inMinutes) / totalDuration.inMinutes;
+
+          // 진행률이 유효한 범위에 있는지 확인
+          if (progressStart < 0 || progressStart > 1 || progressEnd < 0 || progressEnd > 1) {
+            continue;
+          }
+
+          final double startX = leftMargin + (progressStart * graphWidth);
+          final double endX = leftMargin + (progressEnd * graphWidth);
+
+          // 좌표가 유효한지 확인
+          if (startX.isNaN || endX.isNaN || startX < 0 || endX < 0) {
+            continue;
+          }
+
+          final double rawWidth = endX - startX;
+          final double availableWidth = graphWidth - (startX - leftMargin);
+          final double minWidth = 2.0;
+          final double maxWidth = availableWidth > minWidth ? availableWidth : minWidth;
+          final double width = rawWidth.clamp(minWidth, maxWidth);
+
+          // 최종 검증
+          if (width.isNaN || width <= 0 || stageY.isNaN || stageHeight.isNaN) {
+            continue;
+          }
+
+          final RRect rRect = RRect.fromRectAndRadius(
+            Rect.fromLTWH(startX, stageY, width, stageHeight),
+            const Radius.circular(6),
+          );
+          canvas.drawRRect(rRect, barPaint);
+        } catch (e) {
+          // 개별 세그먼트 그리기 실패 시 건너뛰기
+          print('수면 세그먼트 그리기 실패: $e');
+          continue;
+        }
       }
     }
   }
@@ -968,7 +1122,8 @@ class SleepStageGraphPainter extends CustomPainter {
     for (int i = 0; i <= labelCount; i++) {
       final int minutesOffset = i * intervalMinutes;
       final DateTime time = startTime.add(Duration(minutes: minutesOffset));
-      final String timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+      final String timeStr =
+          '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
       textPainter.text = TextSpan(
         text: timeStr,
         style: TextStyle(

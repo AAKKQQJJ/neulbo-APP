@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../const/design_constants.dart';
-import '../../services/user_service.dart';
 import '../../services/oauth_service.dart';
+import '../../services/user_service.dart';
 
 class MyprofileScreen extends StatefulWidget {
   const MyprofileScreen({super.key});
@@ -53,16 +55,49 @@ class _MyprofileScreenState extends State<MyprofileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage(DesignConstants.chatBotChatImagePath),
-          fit: BoxFit.cover,
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SafeArea(
+        extendBodyBehindAppBar: true,
+        body: Stack(
+          children: [
+            // 반응형 배경 이미지
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(DesignConstants.defaultBackgroundPath),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    onError: (exception, stackTrace) {
+                      print('내 프로필 배경 이미지 로드 실패: $exception');
+                    },
+                  ),
+                  // 이미지가 작을 경우를 대비한 fallback 색상
+                  color: const Color(0xFF2D1B69),
+                ),
+                child: Container(
+                  // 이미지 위에 약간의 오버레이 (선택사항)
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.1),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // 콘텐츠
+            SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -91,10 +126,9 @@ class _MyprofileScreenState extends State<MyprofileScreen> {
                     CircleAvatar(
                       radius: 36,
                       backgroundColor: Colors.black12,
-                      backgroundImage: _profileImageUrl.isNotEmpty 
-                          ? NetworkImage(_profileImageUrl) 
-                          : null,
-                      child: _profileImageUrl.isEmpty 
+                      backgroundImage:
+                          _profileImageUrl.isNotEmpty ? NetworkImage(_profileImageUrl) : null,
+                      child: _profileImageUrl.isEmpty
                           ? const Icon(Icons.person, size: 40, color: Colors.grey)
                           : null,
                     ),
@@ -118,8 +152,8 @@ class _MyprofileScreenState extends State<MyprofileScreen> {
                     _buildTile(Icons.health_and_safety, '건강 연동', 'HealthKit 연결됨'),
                     const SizedBox(height: 8),
                     _buildTile(
-                      Icons.logout, 
-                      '로그아웃', 
+                      Icons.logout,
+                      '로그아웃',
                       '계정에서 로그아웃',
                       onTap: _handleLogout,
                     ),
@@ -128,6 +162,8 @@ class _MyprofileScreenState extends State<MyprofileScreen> {
               ),
             ],
           ),
+        ),
+          ],
         ),
       ),
     );

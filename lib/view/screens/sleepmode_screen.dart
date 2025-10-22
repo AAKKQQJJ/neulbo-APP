@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../const/design_constants.dart';
 
 class SleepmodeScreen extends StatelessWidget {
@@ -6,21 +7,34 @@ class SleepmodeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage(DesignConstants.sleepModeImagePath),
-          fit: BoxFit.cover,
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              // 가독성 향상을 위한 그라디언트 오버레이
-              Positioned.fill(
+        extendBodyBehindAppBar: true,
+        body: Stack(
+          children: [
+            // 반응형 배경 이미지
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(DesignConstants.sleepModeImagePath),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    onError: (exception, stackTrace) {
+                      print('수면 모드 배경 이미지 로드 실패: $exception');
+                    },
+                  ),
+                  // 이미지가 작을 경우를 대비한 fallback 색상
+                  color: const Color(0xFF2D1B69),
+                ),
                 child: Container(
+                  // 가독성 향상을 위한 그라디언트 오버레이
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
@@ -30,6 +44,10 @@ class SleepmodeScreen extends StatelessWidget {
                   ),
                 ),
               ),
+            ),
+            // 콘텐츠
+            SafeArea(
+              child:
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -98,8 +116,8 @@ class SleepmodeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

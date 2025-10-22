@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../const/design_constants.dart';
 
 class CommunityScreen extends StatelessWidget {
@@ -6,16 +7,49 @@ class CommunityScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage(DesignConstants.communityImagePath),
-          fit: BoxFit.cover,
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SafeArea(
+        extendBodyBehindAppBar: true,
+        body: Stack(
+          children: [
+            // 반응형 배경 이미지
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(DesignConstants.communityImagePath),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    onError: (exception, stackTrace) {
+                      print('커뮤니티 배경 이미지 로드 실패: $exception');
+                    },
+                  ),
+                  // 이미지가 작을 경우를 대비한 fallback 색상
+                  color: const Color(0xFF2D1B69),
+                ),
+                child: Container(
+                  // 이미지 위에 약간의 오버레이 (선택사항)
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.1),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // 콘텐츠
+            SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -58,6 +92,8 @@ class CommunityScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
+          ],
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {},
