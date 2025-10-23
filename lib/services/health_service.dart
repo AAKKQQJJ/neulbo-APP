@@ -138,52 +138,195 @@ class HealthService {
     };
   }
 
-  /// 수면 품질 점수 계산 (간단한 예시)
+  /// 수면 품질 점수 계산 (100점 만점)
+  /// - 수면 시간: 50점 (총 수면 시간이 권장량과 얼마나 가까운지)
+  /// - 수면 깊이: 25점 (깊은 수면 N3 및 REM 수면의 비율)
+  /// - 수면 회복: 25점 (수면 중 각성 빈도 및 안정성)
   double calculateSleepQualityScore(List<HealthDataPoint> sleepData) {
     if (sleepData.isEmpty) return 0.0;
 
-    // 깊은 잠과 REM 수면 비율을 기반으로 점수 계산
+    // 각 수면 단계별 데이터 분류
     final List<HealthDataPoint> deepSleep = sleepData
         .where((data) => data.type == HealthDataType.SLEEP_DEEP)
+        .toList();
+    
+    final List<HealthDataPoint> lightSleep = sleepData
+        .where((data) => data.type == HealthDataType.SLEEP_LIGHT)
         .toList();
     
     final List<HealthDataPoint> remSleep = sleepData
         .where((data) => data.type == HealthDataType.SLEEP_REM)
         .toList();
 
-    final List<HealthDataPoint> totalSleep = sleepData
+    final List<HealthDataPoint> asleepSleep = sleepData
         .where((data) => data.type == HealthDataType.SLEEP_ASLEEP)
         .toList();
 
-    if (totalSleep.isEmpty) return 0.0;
+    final List<HealthDataPoint> awakeSleep = sleepData
+        .where((data) => data.type == HealthDataType.SLEEP_AWAKE)
+        .toList();
 
-    // 총 수면 시간 계산 (분 단위)
-    double totalSleepMinutes = 0;
-    for (final sleep in totalSleep) {
-      totalSleepMinutes += sleep.dateTo.difference(sleep.dateFrom).inMinutes;
-    }
-
-    // 깊은 잠 시간 계산
+    // 각 수면 단계별 시간 계산 (분 단위)
     double deepSleepMinutes = 0;
     for (final sleep in deepSleep) {
       deepSleepMinutes += sleep.dateTo.difference(sleep.dateFrom).inMinutes;
     }
 
-    // REM 수면 시간 계산
+    double lightSleepMinutes = 0;
+    for (final sleep in lightSleep) {
+      lightSleepMinutes += sleep.dateTo.difference(sleep.dateFrom).inMinutes;
+    }
+
     double remSleepMinutes = 0;
     for (final sleep in remSleep) {
       remSleepMinutes += sleep.dateTo.difference(sleep.dateFrom).inMinutes;
     }
 
-    // 점수 계산 (0-100)
-    final double deepSleepRatio = deepSleepMinutes / totalSleepMinutes;
-    final double remSleepRatio = remSleepMinutes / totalSleepMinutes;
+    double asleepSleepMinutes = 0;
+    for (final sleep in asleepSleep) {
+      asleepSleepMinutes += sleep.dateTo.difference(sleep.dateFrom).inMinutes;
+    }
+
+    double awakeMinutes = 0;
+    for (final sleep in awakeSleep) {
+      awakeMinutes += sleep.dateTo.difference(sleep.dateFrom).inMinutes;
+    }
+
+    // 총 수면 시간 계산 (ASLEEP + DEEP + LIGHT + REM)
+    double totalSleepMinutes = deepSleepMinutes + lightSleepMinutes + remSleepMinutes + asleepSleepMinutes;
+
+    if (totalSleepMinutes == 0) return 0.0;
+
+    // ============================================
+    // 1. 수면 시간 점수 (50점 만점)
+    // ============================================
+    // 권장 수면 시간: 7-9시간 (420-540분)
+    double timeScore = 0;
+    final double totalSleepHours = totalSleepMinutes / 60;
     
-    // 이상적인 비율: 깊은 잠 15-20%, REM 20-25%
-    final double deepScore = (deepSleepRatio * 100).clamp(0, 100);
-    final double remScore = (remSleepRatio * 100).clamp(0, 100);
+    if (totalSleepHours >= 7 && totalSleepHours <= 9) {
+      // 이상적인 범위: 만점
+      timeScore = 50;
+    } else if (totalSleepHours >= 6 && totalSleepHours < 7) {
+      // 6-7시간: 40-50점 (선형 보간)
+      timeScore = 40 + ((totalSleepHours - 6) * 10);
+    } else if (totalSleepHours > 9 && totalSleepHours <= 10) {
+      // 9-10시간: 40-50점 (선형 보간)
+      timeScore = 50 - ((totalSleepHours - 9) * 10);
+    } else if (totalSleepHours >= 5 && totalSleepHours < 6) {
+      // 5-6시간: 25-40점
+      timeScore = 25 + ((totalSleepHours - 5) * 15);
+    } else if (totalSleepHours > 10 && totalSleepHours <= 11) {
+      // 10-11시간: 25-40점
+      timeScore = 40 - ((totalSleepHours - 10) * 15);
+    } else if (totalSleepHours >= 4 && totalSleepHours < 5) {
+      // 4-5시간: 10-25점
+      timeScore = 10 + ((totalSleepHours - 4) * 15);
+    } else if (totalSleepHours < 4) {
+      // 4시간 미만: 0-10점
+      timeScore = (totalSleepHours / 4) * 10;
+    } else {
+      // 11시간 초과: 10-25점
+      timeScore = 25 - ((totalSleepHours - 11).clamp(0, 2) * 7.5);
+    }
+
+    // ============================================
+    // 2. 수면 깊이 점수 (25점 만점)
+    // ============================================
+    // 깊은 수면(N3) 비율: 13-23% 이상적 (평균 15-20%)
+    // REM 수면 비율: 20-25% 이상적
+    double depthScore = 0;
     
-    return ((deepScore + remScore) / 2).clamp(0, 100);
+    final double deepSleepRatio = (deepSleepMinutes / totalSleepMinutes) * 100;
+    final double remSleepRatio = (remSleepMinutes / totalSleepMinutes) * 100;
+
+    // 깊은 수면 점수 (12.5점 만점)
+    double deepScore = 0;
+    if (deepSleepRatio >= 15 && deepSleepRatio <= 20) {
+      deepScore = 12.5;
+    } else if (deepSleepRatio >= 13 && deepSleepRatio < 15) {
+      deepScore = 10 + ((deepSleepRatio - 13) / 2 * 2.5);
+    } else if (deepSleepRatio > 20 && deepSleepRatio <= 23) {
+      deepScore = 12.5 - ((deepSleepRatio - 20) / 3 * 2.5);
+    } else if (deepSleepRatio >= 10 && deepSleepRatio < 13) {
+      deepScore = 5 + ((deepSleepRatio - 10) / 3 * 5);
+    } else if (deepSleepRatio < 10) {
+      deepScore = (deepSleepRatio / 10) * 5;
+    } else {
+      deepScore = 5;
+    }
+
+    // REM 수면 점수 (12.5점 만점)
+    double remScore = 0;
+    if (remSleepRatio >= 20 && remSleepRatio <= 25) {
+      remScore = 12.5;
+    } else if (remSleepRatio >= 15 && remSleepRatio < 20) {
+      remScore = 10 + ((remSleepRatio - 15) / 5 * 2.5);
+    } else if (remSleepRatio > 25 && remSleepRatio <= 30) {
+      remScore = 12.5 - ((remSleepRatio - 25) / 5 * 2.5);
+    } else if (remSleepRatio >= 10 && remSleepRatio < 15) {
+      remScore = 5 + ((remSleepRatio - 10) / 5 * 5);
+    } else if (remSleepRatio < 10) {
+      remScore = (remSleepRatio / 10) * 5;
+    } else {
+      remScore = 5;
+    }
+
+    depthScore = deepScore + remScore;
+
+    // ============================================
+    // 3. 수면 회복 점수 (25점 만점)
+    // ============================================
+    // 수면 중 각성 시간과 빈도를 기반으로 평가
+    double restorationScore = 0;
+    
+    // 각성 시간 비율
+    final double awakeRatio = (awakeMinutes / (totalSleepMinutes + awakeMinutes)) * 100;
+    
+    // 각성 빈도 (각성 세그먼트 개수)
+    final int awakeCount = awakeSleep.length;
+
+    // 각성 시간 비율 점수 (15점 만점)
+    double awakeTimeScore = 0;
+    if (awakeRatio <= 5) {
+      // 5% 이하: 이상적
+      awakeTimeScore = 15;
+    } else if (awakeRatio <= 10) {
+      // 5-10%: 양호
+      awakeTimeScore = 15 - ((awakeRatio - 5) * 1);
+    } else if (awakeRatio <= 15) {
+      // 10-15%: 보통
+      awakeTimeScore = 10 - ((awakeRatio - 10) * 1);
+    } else if (awakeRatio <= 20) {
+      // 15-20%: 나쁨
+      awakeTimeScore = 5 - ((awakeRatio - 15) * 0.5);
+    } else {
+      // 20% 초과: 매우 나쁨
+      awakeTimeScore = 0;
+    }
+
+    // 각성 빈도 점수 (10점 만점)
+    double awakeFrequencyScore = 0;
+    if (awakeCount == 0) {
+      awakeFrequencyScore = 10;
+    } else if (awakeCount <= 2) {
+      awakeFrequencyScore = 10 - (awakeCount * 1);
+    } else if (awakeCount <= 5) {
+      awakeFrequencyScore = 8 - ((awakeCount - 2) * 1.5);
+    } else if (awakeCount <= 10) {
+      awakeFrequencyScore = 3 - ((awakeCount - 5) * 0.4);
+    } else {
+      awakeFrequencyScore = 0;
+    }
+
+    restorationScore = awakeTimeScore + awakeFrequencyScore;
+
+    // ============================================
+    // 최종 점수 계산
+    // ============================================
+    final double finalScore = (timeScore + depthScore + restorationScore).clamp(0, 100);
+
+    return finalScore;
   }
 
   /// 건강 앱 연결 상태 확인 (실제 데이터 조회로 확인)

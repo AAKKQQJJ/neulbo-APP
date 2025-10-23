@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../const/design_constants.dart';
+import 'sleep_chat_screen.dart';
 
 class SleepaiScreen extends StatelessWidget {
   const SleepaiScreen({super.key});
@@ -49,78 +50,115 @@ class SleepaiScreen extends StatelessWidget {
                 ),
               ),
             ),
-            // 콘텐츠
+            // 콘텐츠 - 화면 중앙
             SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(20),
-                child: Text(
-                  '수면 AI 코치',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'malang',
-                  ),
-                ),
-              ),
-              const Spacer(),
-              // 채팅 미리보기 카드 틀
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
+              child: Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text('오늘의 팁', style: TextStyle(fontWeight: FontWeight.bold)),
-                    SizedBox(height: 8),
-                    Text('취침 2시간 전에는 카페인을 피하는 것이 좋아요.'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'AI에게 질문해보세요...',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    // 그라데이션 텍스트 1줄
+                    ShaderMask(
+                      shaderCallback: (Rect bounds) {
+                        return const LinearGradient(
+                          colors: [
+                            Color(0xFFEDE2FF),
+                            Color(0xFFAF99FF),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ).createShader(bounds);
+                      },
+                      child: const Text(
+                        '궁금하신 수면 정보,',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontFamily: 'suit',
+                          height: 1.3,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    // 그라데이션 텍스트 2줄
+                    ShaderMask(
+                      shaderCallback: (Rect bounds) {
+                        return const LinearGradient(
+                          colors: [
+                            Color(0xFFEDE2FF),
+                            Color(0xFFAF99FF),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ).createShader(bounds);
+                      },
+                      child: const Text(
+                        '지금 바로 알려드릴게요!',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontFamily: 'suit',
+                          height: 1.3,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      child: const Text('보내기'),
+                    ),
+                    const SizedBox(height: 20),
+                    // 설명 텍스트
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 40),
+                      child: Text(
+                        '수면 패턴, 꿀잠 방법, 어떤 정보든 알고 싶으신 걸 말씀해주세요.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                          fontFamily: 'suit',
+                          height: 1.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    // 질문하기 버튼
+                    ElevatedButton(
+                      onPressed: () {
+                        // 채팅 화면으로 이동
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const SleepChatScreen(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFAF99FF),
+                        foregroundColor: const Color(0xFF2D1B69),
+                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Text(
+                            '질문하기',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'suit',
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(Icons.arrow_forward, size: 20),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
           ],
         ),
       ),

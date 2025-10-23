@@ -4,6 +4,7 @@ import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:neulbo/const/routes.dart';
 
 import 'services/api_service.dart';
+import 'services/user_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +15,9 @@ void main() async {
   KakaoSdk.init(
     nativeAppKey: dotenv.env['KAKAO_NATIVE_APP_KEY'] ?? '',
   );
+  
+  // 저장된 사용자 정보 로드
+  await UserService.loadUserInfo();
   
   runApp(MyApp());
 }

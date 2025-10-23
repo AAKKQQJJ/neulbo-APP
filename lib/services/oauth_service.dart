@@ -177,6 +177,9 @@ class OAuthService {
           );
           await UserService.saveUserInfo(userInfo);
 
+          // 백엔드에서 사용자 ID 조회 및 업데이트
+          await UserService.fetchAndUpdateUserInfo();
+
           print('Google 로그인 성공 - 신규 사용자: $isNewUser');
           return true;
         } else {
@@ -440,6 +443,9 @@ class OAuthService {
             isNewUser: isNewUser,
           );
           await UserService.saveUserInfo(userInfo);
+
+          // 백엔드에서 사용자 ID 조회 및 업데이트
+          await UserService.fetchAndUpdateUserInfo();
 
           print('$provider 로그인 성공 - 신규 사용자: $isNewUser');
           return true;

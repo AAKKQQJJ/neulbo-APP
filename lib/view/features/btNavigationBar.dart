@@ -42,12 +42,23 @@ class _BtNavigationBarState extends State<BtNavigationBar> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      extendBody: true,
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _Tap,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF2D1B69),
+              Color(0xFF1A0F3D),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: _Tap,
+        ),
       ),
+      extendBody: true,
       bottomNavigationBar: _buildGradientBottomNavigationBar(),
     );
   }
@@ -67,6 +78,13 @@ class _BtNavigationBarState extends State<BtNavigationBar> {
           topLeft: Radius.circular(25),
           topRight: Radius.circular(25),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,

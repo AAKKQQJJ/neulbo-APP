@@ -1,4 +1,5 @@
 class UserInfo {
+  final String? userId; // 백엔드에서 받은 사용자 UUID
   final String provider;
   final String providerId;
   final String email;
@@ -10,6 +11,7 @@ class UserInfo {
   final bool isNewUser;
 
   const UserInfo({
+    this.userId,
     required this.provider,
     required this.providerId,
     required this.email,
@@ -23,6 +25,7 @@ class UserInfo {
 
   factory UserInfo.fromJson(Map<String, dynamic> json) {
     return UserInfo(
+      userId: json['userId'] as String?,
       provider: json['provider'] as String,
       providerId: json['providerId'] as String,
       email: json['email'] as String,
@@ -37,6 +40,7 @@ class UserInfo {
 
   Map<String, dynamic> toJson() {
     return {
+      'userId': userId,
       'provider': provider,
       'providerId': providerId,
       'email': email,

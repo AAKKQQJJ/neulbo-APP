@@ -240,7 +240,7 @@ curl -X POST "https://neulbo1.com/api/ml/health/record-metrics" \
 ### 1.2 수면 분석 API
 
 #### POST /api/ml/sleep/analyze
-수면 데이터 분석
+수면 데이터 분석 (JWT 인증)
 
 **Request:**
 
@@ -248,11 +248,12 @@ curl -X POST "https://neulbo1.com/api/ml/health/record-metrics" \
 |------|------|
 | **Method** | POST |
 | **URL** | `/api/ml/sleep/analyze` |
-| **Authentication** | 불필요 |
+| **Authentication** | JWT Bearer 토큰 필요 |
 | **Content-Type** | `application/json` |
 
 | Headers | Required | Description |
 |---------|----------|-------------|
+| `Authorization` | ✅ | `Bearer {JWT_TOKEN}` (Spring Boot에서 발급된 토큰) |
 | `Content-Type` | ✅ | `application/json` |
 
 | Query Parameters | Type | Required | Description |
@@ -261,7 +262,7 @@ curl -X POST "https://neulbo1.com/api/ml/health/record-metrics" \
 
 | Request Body | Type | Required | Description |
 |--------------|------|----------|-------------|
-| `user_id` | string | ✅ | 사용자 식별자 |
+| ~~`user_id`~~ | ~~string~~ | ~~✅~~ | ~~사용자 식별자~~ **JWT 토큰에서 자동 추출** |
 | `recording_start` | datetime | ✅ | 녹음 시작 시간 (ISO 8601) |
 | `recording_end` | datetime | ✅ | 녹음 종료 시간 (ISO 8601) |
 | `accelerometer_data` | array | ✅ | 가속도계 센서 데이터 |
@@ -270,9 +271,9 @@ curl -X POST "https://neulbo1.com/api/ml/health/record-metrics" \
 **Request Example:**
 ```bash
 curl -X POST "http://localhost:8000/api/ml/sleep/analyze" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "user123",
     "recording_start": "2025-10-01T22:00:00",
     "recording_end": "2025-10-02T06:00:00",
     "accelerometer_data": [
@@ -431,13 +432,31 @@ curl -X POST "http://localhost:8000/api/ml/sleep/analyze" \
 
 ---
 
-#### GET /api/ml/sleep/history/{user_id}
-사용자의 수면 분석 이력 조회
+#### GET /api/ml/sleep/history
+현재 사용자의 수면 분석 이력 조회 (JWT 인증)
+
+**Request:**
+
+| 구분 | 내용 |
+|------|------|
+| **Method** | GET |
+| **URL** | `/api/ml/sleep/history` |
+| **Authentication** | JWT Bearer 토큰 필요 |
+
+| Headers | Required | Description |
+|---------|----------|-------------|
+| `Authorization` | ✅ | `Bearer {JWT_TOKEN}` (Spring Boot에서 발급된 토큰) |
 
 **Parameters:**
-- `user_id` (string): 사용자 ID
+- ~~`user_id` (string): 사용자 ID~~ **JWT 토큰에서 자동 추출**
 - `page` (int, optional): 페이지 번호 (기본값: 1)
 - `page_size` (int, optional): 페이지 크기 (기본값: 10, 최대: 100)
+
+**Request Example:**
+```bash
+curl -X GET "http://localhost:8000/api/ml/sleep/history?page=1&page_size=10" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
 
 **Response:**
 ```json
@@ -501,7 +520,7 @@ curl -X POST "http://localhost:8000/api/ml/sleep/analyze" \
 ### 1.3 LLM 피드백 API
 
 #### POST /api/ml/llm/feedback
-수면 분석 기반 LLM 피드백 생성
+수면 분석 기반 LLM 피드백 생성 (JWT 인증)
 
 **Request:**
 
@@ -509,11 +528,12 @@ curl -X POST "http://localhost:8000/api/ml/sleep/analyze" \
 |------|------|
 | **Method** | POST |
 | **URL** | `/api/ml/llm/feedback` |
-| **Authentication** | 불필요 |
+| **Authentication** | JWT Bearer 토큰 필요 |
 | **Content-Type** | `application/json` |
 
 | Headers | Required | Description |
 |---------|----------|-------------|
+| `Authorization` | ✅ | `Bearer {JWT_TOKEN}` (Spring Boot에서 발급된 토큰) |
 | `Content-Type` | ✅ | `application/json` |
 
 | Query Parameters | Type | Required | Description |
@@ -522,16 +542,16 @@ curl -X POST "http://localhost:8000/api/ml/sleep/analyze" \
 
 | Request Body | Type | Required | Description | Validation |
 |--------------|------|----------|-------------|------------|
-| `user_id` | string | ✅ | 사용자 ID | UUID 형식 권장 |
+| ~~`user_id`~~ | ~~string~~ | ~~✅~~ | ~~사용자 ID~~ | **JWT 토큰에서 자동 추출** |
 | `analysis_id` | string | ✅ | 수면 분석 ID | UUID 형식 |
 | `user_prompt` | string | ✅ | 사용자 질문 | 1-1000자 |
 
 **Request Example:**
 ```bash
 curl -X POST "http://localhost:8000/api/ml/llm/feedback" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "user123",
     "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
     "user_prompt": "어떻게 하면 더 깊은 잠을 잘 수 있나요?"
   }'
@@ -727,7 +747,7 @@ curl -X GET "http://localhost:8000/api/ml/llm/health/llm"
 웨어러블 기기(Apple Watch, Galaxy Watch 등)에서 수집된 사전 분석된 수면 데이터를 처리합니다.
 
 #### POST /api/ml/wearable/analyze
-웨어러블 기기 수면 데이터 분석 및 저장
+웨어러블 기기 수면 데이터 분석 및 저장 (JWT 인증)
 
 **Request:**
 
@@ -735,11 +755,12 @@ curl -X GET "http://localhost:8000/api/ml/llm/health/llm"
 |------|------|
 | **Method** | POST |
 | **URL** | `/api/ml/wearable/analyze` |
-| **Authentication** | 불필요 |
+| **Authentication** | JWT Bearer 토큰 필요 |
 | **Content-Type** | `application/json` |
 
 | Headers | Required | Description |
 |---------|----------|-------------|
+| `Authorization` | ✅ | `Bearer {JWT_TOKEN}` (Spring Boot에서 발급된 토큰) |
 | `Content-Type` | ✅ | `application/json` |
 
 | Query Parameters | Type | Required | Description |
@@ -748,7 +769,7 @@ curl -X GET "http://localhost:8000/api/ml/llm/health/llm"
 
 | Request Body | Type | Required | Description | Validation |
 |--------------|------|----------|-------------|------------|
-| `user_id` | string | ✅ | 사용자 ID | UUID 형식 |
+| ~~`user_id`~~ | ~~string~~ | ~~✅~~ | ~~사용자 ID~~ | **JWT 토큰에서 자동 추출** |
 | `device_type` | string | ✅ | 웨어러블 기기 타입 | "apple_watch", "galaxy_watch" |
 | `sleep_start` | datetime | ✅ | 수면 시작 시간 | ISO 8601 형식 |
 | `sleep_end` | datetime | ✅ | 수면 종료 시간 | ISO 8601 형식 |
@@ -760,9 +781,9 @@ curl -X GET "http://localhost:8000/api/ml/llm/health/llm"
 **Request Example:**
 ```bash
 curl -X POST "http://localhost:8000/api/ml/wearable/analyze" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "550e8400-e29b-41d4-a716-446655440000",
     "device_type": "apple_watch",
     "sleep_start": "2025-10-01T22:00:00Z",
     "sleep_end": "2025-10-02T06:00:00Z",

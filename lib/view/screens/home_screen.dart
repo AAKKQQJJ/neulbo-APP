@@ -55,25 +55,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, String> _getTimeBasedGreeting() {
     final now = DateTime.now();
     final hour = now.hour;
-    
+
     if (hour >= 4 && hour < 11) {
       // 아침 (AM 04:00 ~ AM 11:00)
-      return {
-        'greeting': '좋은 아침이에요! ☀️',
-        'subtext': '상쾌하게 하루를 시작해볼까요?'
-      };
+      return {'greeting': '좋은 아침이에요! ☀️', 'subtext': '상쾌하게 하루를 시작해볼까요?'};
     } else if (hour >= 11 && hour < 17) {
       // 점심 (AM 11:00 ~ PM 05:00)
-      return {
-        'greeting': '점심시간이 찾아왔어요. 🍽️',
-        'subtext': '잠시 쉬어가며 에너지 가득 채워보세요!'
-      };
+      return {'greeting': '점심시간이 찾아왔어요. 🍽️', 'subtext': '잠시 쉬어가며 에너지 가득 채워보세요!'};
     } else {
       // 저녁 (PM 05:00 ~ AM 04:00)
-      return {
-        'greeting': '평화로운 저녁이에요. 🌙',
-        'subtext': '하루의 피로를 내려놓고 편히 쉬어요.'
-      };
+      return {'greeting': '평화로운 저녁이에요. 🌙', 'subtext': '하루의 피로를 내려놓고 편히 쉬어요.'};
     }
   }
 
@@ -146,79 +137,79 @@ class _HomeScreenState extends State<HomeScreen> {
         statusBarBrightness: Brightness.dark, // iOS용 설정
       ),
       child: Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBodyBehindAppBar: true,
-      body: Stack(
-        children: [
-          // 반응형 배경 이미지
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(DesignConstants.defaultBackgroundPath),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                  onError: (exception, stackTrace) {
-                    print('배경 이미지 로드 실패: $exception');
-                    print('이미지 경로: ${DesignConstants.defaultBackgroundPath}');
-                    print('대신 homeScreenImagePath 사용: ${DesignConstants.homeScreenImagePath}');
-                  },
-                ),
-                // 이미지가 작을 경우를 대비한 fallback 색상
-                color: const Color(0xFF2D1B69),
-              ),
+        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: true,
+        body: Stack(
+          children: [
+            // 반응형 배경 이미지
+            Positioned.fill(
               child: Container(
-                // 이미지 위에 약간의 오버레이 (선택사항)
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.1),
+                  image: DecorationImage(
+                    image: AssetImage(DesignConstants.defaultBackgroundPath),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    onError: (exception, stackTrace) {
+                      print('배경 이미지 로드 실패: $exception');
+                      print('이미지 경로: ${DesignConstants.defaultBackgroundPath}');
+                      print('대신 homeScreenImagePath 사용: ${DesignConstants.homeScreenImagePath}');
+                    },
+                  ),
+                  // 이미지가 작을 경우를 대비한 fallback 색상
+                  color: const Color(0xFF2D1B69),
+                ),
+                child: Container(
+                  // 이미지 위에 약간의 오버레이 (선택사항)
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.1),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // 콘텐츠
+            SafeArea(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 12),
+                      _buildGreeting(),
+                      const SizedBox(height: 24),
+                      isLoading
+                          ? _buildLoadingCard()
+                          : hasHealthPermission
+                              ? _buildSleepDataCard(screenWidth)
+                              : _buildPermissionRequestCard(),
+                      const SizedBox(height: 32),
+                      _buildWeeklyFriendsSection(),
+                      const SizedBox(height: 32),
+                      _buildChallengesSection(),
+                      const SizedBox(height: 32),
+                      _buildTodayLettersSection(),
+                      const SizedBox(height: 80),
                     ],
                   ),
                 ),
               ),
             ),
-          ),
-          // 콘텐츠
-          SafeArea(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 12),
-                    _buildGreeting(),
-                    const SizedBox(height: 24),
-                    isLoading
-                        ? _buildLoadingCard()
-                        : hasHealthPermission
-                            ? _buildSleepDataCard(screenWidth)
-                            : _buildPermissionRequestCard(),
-                    const SizedBox(height: 32),
-                    _buildWeeklyFriendsSection(),
-                    const SizedBox(height: 32),
-                    _buildChallengesSection(),
-                    const SizedBox(height: 32),
-                    _buildTodayLettersSection(),
-                    const SizedBox(height: 80),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildGreeting() {
     final greetingData = _getTimeBasedGreeting();
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -291,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            '수면 정보를 연동해서 클클과 함께해요 🛌',
+            '수면 정보를 연동해서 쿨쿨과 함께해요 🛌',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 18,
