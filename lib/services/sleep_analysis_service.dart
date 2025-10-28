@@ -1,5 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'user_service.dart';
+
 /// 수면 분석 ID 관리 서비스
 /// 
 /// 웨어러블 수면 데이터 분석 결과의 analysis_id를 저장하고 조회합니다.
@@ -7,6 +9,7 @@ class SleepAnalysisService {
   static const String _keyLastAnalysisId = 'last_sleep_analysis_id';
   static const String _keyLastAnalysisTimestamp = 'last_sleep_analysis_timestamp';
   static const String _keyLastAnalysisSummary = 'last_sleep_analysis_summary';
+  static const String _keyLastAnalysisUserId = 'last_sleep_analysis_user_id';
 
   /// 마지막 수면 분석 ID 저장
   /// 
@@ -18,17 +21,24 @@ class SleepAnalysisService {
   }) async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String? currentUserId = UserService.getUserId();
+      
       await prefs.setString(_keyLastAnalysisId, analysisId);
       await prefs.setString(
         _keyLastAnalysisTimestamp,
         DateTime.now().toIso8601String(),
       );
       
+      if (currentUserId != null) {
+        await prefs.setString(_keyLastAnalysisUserId, currentUserId);
+      }
+      
       if (summary != null) {
         await prefs.setString(_keyLastAnalysisSummary, summary);
       }
       
       print('SleepAnalysisService - 분석 ID 저장 완료: $analysisId');
+      print('SleepAnalysisService - 저장한 user_id: $currentUserId');
     } catch (error) {
       print('SleepAnalysisService - 분석 ID 저장 실패: $error');
     }
@@ -93,6 +103,7 @@ class SleepAnalysisService {
       await prefs.remove(_keyLastAnalysisId);
       await prefs.remove(_keyLastAnalysisTimestamp);
       await prefs.remove(_keyLastAnalysisSummary);
+      await prefs.remove(_keyLastAnalysisUserId);
       print('SleepAnalysisService - 분석 ID 삭제 완료');
     } catch (error) {
       print('SleepAnalysisService - 분석 ID 삭제 실패: $error');
@@ -102,6 +113,7 @@ class SleepAnalysisService {
   /// 분석 ID 유효성 확인
   /// 
   /// 저장된 분석 ID가 있고, 최근 7일 이내의 데이터인지 확인합니다.
+  /// user_id가 현재 로그인한 사용자와 일치하는지도 확인합니다.
   /// 
   /// Returns: 유효한 분석 ID 또는 null
   static Future<String?> getValidAnalysisId() async {
@@ -109,6 +121,20 @@ class SleepAnalysisService {
       final String? analysisId = await getLastAnalysisId();
       if (analysisId == null) {
         print('SleepAnalysisService - 분석 ID가 없습니다');
+        return null;
+      }
+
+      // 저장된 user_id와 현재 user_id 비교
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String? savedUserId = prefs.getString(_keyLastAnalysisUserId);
+      final String? currentUserId = UserService.getUserId();
+      
+      if (savedUserId != null && currentUserId != null && savedUserId != currentUserId) {
+        print('SleepAnalysisService - ⚠️ 다른 사용자의 분석 ID입니다');
+        print('SleepAnalysisService - 저장된 user_id: $savedUserId');
+        print('SleepAnalysisService - 현재 user_id: $currentUserId');
+        print('SleepAnalysisService - 분석 ID를 초기화합니다');
+        await clearLastAnalysisId();
         return null;
       }
 

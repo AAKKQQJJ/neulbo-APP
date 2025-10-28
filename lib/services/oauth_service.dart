@@ -15,7 +15,13 @@ import 'user_service.dart';
 import '../models/user_info.dart';
 
 class OAuthService {
-  static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const FlutterSecureStorage _storage = FlutterSecureStorage(
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+      // 앱 삭제 시 Keychain 데이터도 함께 삭제되도록 설정
+      synchronizable: false,
+    ),
+  );
 
   // 환경변수에서 안전하게 가져오기
   static String get backendUrl => dotenv.env['BACKEND_URL'] ?? '';
@@ -208,6 +214,10 @@ class OAuthService {
           print('카카오톡으로 로그인 성공');
         } catch (error) {
           print('카카오톡으로 로그인 실패, 카카오계정으로 로그인 시도: $error');
+          // URL 스키마 에러는 무시하고 계속 진행
+          if (error.toString().contains('Origin is only applicable')) {
+            print('📱 URL 스키마 에러 감지됨 - 무시하고 계속 진행');
+          }
           token = await UserApi.instance.loginWithKakaoAccount();
         }
       } else {
@@ -468,6 +478,21 @@ class OAuthService {
     return await _storage.read(key: 'jwt_token');
   }
 
+  /// Refresh Token 가져오기
+  static Future<String?> getRefreshToken() async {
+    return await _storage.read(key: 'refresh_token');
+  }
+
+  /// JWT 토큰 저장 (토큰 갱신 시 사용)
+  static Future<void> saveJwtToken(String token) async {
+    await _storage.write(key: 'jwt_token', value: token);
+  }
+
+  /// Refresh Token 저장
+  static Future<void> saveRefreshToken(String token) async {
+    await _storage.write(key: 'refresh_token', value: token);
+  }
+
   // 로그아웃 (모든 토큰 삭제)
   static Future<void> logout() async {
     await _storage.delete(key: 'jwt_token');
@@ -490,6 +515,16 @@ class OAuthService {
       await FlutterNaverLogin.logOut();
     } catch (e) {
       print('Naver 로그아웃 에러: $e');
+    }
+  }
+
+  /// Keychain의 모든 데이터 삭제 (디버깅/테스트용)
+  static Future<void> clearAllStoredData() async {
+    try {
+      await _storage.deleteAll();
+      print('✅ Keychain의 모든 데이터가 삭제되었습니다.');
+    } catch (e) {
+      print('❌ Keychain 삭제 실패: $e');
     }
   }
 

@@ -5,7 +5,12 @@ import '../models/user_info.dart';
 import 'api_service.dart';
 
 class UserService {
-  static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const FlutterSecureStorage _storage = FlutterSecureStorage(
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+      synchronizable: false,
+    ),
+  );
   static const String _userInfoKey = 'user_info';
   
   static UserInfo? _currentUser;

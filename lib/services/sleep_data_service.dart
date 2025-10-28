@@ -15,38 +15,50 @@ class SleepDataService {
   final HealthService _healthService = HealthService();
 
   /// 초기 설정 - HealthKit 권한 요청
+  /// 
+  /// ⚠️ 워치 모드: HealthKit에서 데이터를 읽기만 합니다 (서버 전송 없음)
+  /// 📱 디바이스 모드: 센서 데이터를 수집하고 ML 서버로 전송합니다
   Future<bool> initializeHealthKit() async {
     try {
       final bool hasPermissions = await _healthService.requestHealthPermissions();
       
       if (hasPermissions) {
-        // 서버에 HealthKit 연동 상태 업데이트 (로그인 된 경우에만)
-        await _notifyBackendHealthKitStatus(true);
-        print('SleepDataService - HealthKit 초기화 완료');
+        print('✅ SleepDataService - HealthKit 초기화 완료');
+        print('📖 HealthKit 데이터는 로컬에서만 읽어옵니다 (서버 전송 없음)');
+        // 워치 모드는 로컬에서만 데이터를 읽으므로 서버 호출 불필요
+        // await _notifyBackendHealthKitStatus(true); // 제거됨
         return true;
       } else {
-        await _notifyBackendHealthKitStatus(false);
-        print('SleepDataService - HealthKit 권한 거부됨');
+        print('⚠️ SleepDataService - HealthKit 권한 거부됨');
         return false;
       }
     } catch (error) {
-      print('SleepDataService - HealthKit 초기화 실패: $error');
-      await _notifyBackendHealthKitStatus(false);
+      print('❌ SleepDataService - HealthKit 초기화 실패: $error');
       return false;
     }
   }
 
   /// JWT가 있을 때만 백엔드에 HealthKit 상태를 통지
+  /// 
+  /// ⚠️ 주의: 워치 데이터 모드에서는 HealthKit에서 읽기만 하고
+  /// 서버로 전송하지 않습니다. 디바이스 측정 모드에서만 서버 전송이 필요합니다.
   Future<void> _notifyBackendHealthKitStatus(bool isConnected) async {
     try {
       final String? token = await OAuthService.getJwtToken();
       if (token == null || token.isEmpty) {
         // 미로그인 상태에서는 서버 호출을 생략
+        print('SleepDataService - HealthKit 상태 알림 건너뜀 (미로그인)');
         return;
       }
+      
+      // HealthKit 상태 업데이트는 선택적 기능
+      // 실패해도 앱 기능에 영향 없음
       await ApiService.updateHealthKitStatus(isConnected);
-    } catch (_) {
+      print('✅ HealthKit 상태 서버 업데이트 완료');
+    } catch (e) {
       // 서버 통지는 실패하더라도 앱 플로우를 막지 않음
+      print('⚠️ HealthKit 상태 서버 업데이트 실패 (무시됨): $e');
+      // 에러를 조용히 무시 - HealthKit 데이터는 로컬에서만 사용
     }
   }
 
@@ -396,6 +408,13 @@ class SleepDataService {
           summary: summary,
         );
         print('  💾 분석 ID 저장 완료: $analysisId');
+        print('  📝 이 분석 ID는 user_id: $userId 와 연결되어야 합니다!');
+        print('  ⚠️ 백엔드 개발자 확인 사항:');
+        print('     - DB에서 이 analysis_id로 조회 시 user_id가 일치하는지 확인해주세요');
+        print('     - SELECT * FROM wearable_sleep_analysis WHERE analysis_id = \'$analysisId\'');
+      } else {
+        print('  ⚠️ 응답에 analysis_id가 없습니다!');
+        print('  📦 전체 응답: ${response.data}');
       }
     } catch (error) {
       print('  ❌ 웨어러블 API 전송 실패: $error');

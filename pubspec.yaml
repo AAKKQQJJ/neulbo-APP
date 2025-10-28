@@ -61,6 +61,22 @@ dependencies:
   # Health Kit 관련 (iOS 건강 앱 연동)
   health: ^13.0.0
 
+  # 센서 데이터 수집 (가속도계)
+  sensors_plus: ^4.0.2
+
+  # 권한 요청
+  permission_handler: ^11.3.0
+
+  # 실시간 오디오 스트림 (파일 저장 없이 dB 레벨 측정)
+  mic_stream: ^0.7.2
+
+  # 파일 경로 (기타 용도)
+  path_provider: ^2.1.1
+
+  # 화면 밝기 조절 (수면 측정 중 배터리 절약)
+  screen_brightness: ^1.0.1
+  # wakelock_plus: ^1.2.8  # 화면이 자동으로 꺼지도록 제거됨
+
 
 
 

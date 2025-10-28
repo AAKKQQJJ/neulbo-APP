@@ -189,8 +189,20 @@ class _SleepChatScreenState extends State<SleepChatScreen> {
 
       // 에러 메시지 추가
       String errorMessage = '죄송합니다. 일시적인 오류가 발생했습니다.';
+      
       if (error.toString().contains('분석 데이터를 찾을 수 없습니다')) {
-        errorMessage = '수면 분석 데이터를 찾을 수 없습니다.\n수면 데이터를 다시 동기화해주세요.';
+        // 404 에러: analysis_id가 서버에 없음
+        // 저장된 analysis_id를 초기화
+        _currentAnalysisId = null;
+        await SleepAnalysisService.clearLastAnalysisId();
+        
+        errorMessage = '⚠️ 수면 분석 데이터를 찾을 수 없습니다.\n\n'
+            '저장된 분석 ID가 서버에 존재하지 않습니다.\n'
+            '아래 단계를 따라주세요:\n\n'
+            '1️⃣ 뒤로가기 버튼을 누르세요\n'
+            '2️⃣ "내 프로필" → "수면 데이터 확인하기"로 이동\n'
+            '3️⃣ "서버 동기화 (최근 7일)" 버튼을 눌러주세요\n'
+            '4️⃣ 동기화가 완료되면 다시 질문해주세요';
       } else if (error.toString().contains('인증')) {
         errorMessage = '인증에 실패했습니다.\n다시 로그인해주세요.';
       }

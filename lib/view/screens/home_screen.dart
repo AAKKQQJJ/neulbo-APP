@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:health/health.dart';
 
 import '../../const/design_constants.dart';
 import '../../models/sleep_data.dart';
+import '../../models/sleep_recording_data.dart';
 import '../../services/health_service.dart';
 import '../../services/sleep_data_service.dart';
+import '../../services/sleep_data_storage_service.dart';
 import '../../services/user_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,11 +20,20 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const FlutterSecureStorage _storage = FlutterSecureStorage(
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+      synchronizable: false,
+    ),
+  );
+
   bool hasHealthPermission = false;
   bool isLoading = true;
   SleepData? todaySleepData;
   List<HealthDataPoint> rawSleepDataPoints = [];
   String userNickname = '사용자';
+  String _sleepMeasurementDevice = 'device'; // 'device' 또는 'watch'
+  
   final HealthService _healthService = HealthService();
   final SleepDataService _sleepDataService = SleepDataService();
 
@@ -30,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     print('HomeScreen - 배경 이미지 경로: ${DesignConstants.defaultBackgroundPath}');
     _loadUserInfo();
-    _checkPermissionAndLoadData();
+    _loadSleepMeasurementDevice();
   }
 
   Future<void> _loadUserInfo() async {
@@ -48,6 +60,24 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         userNickname = '사용자';
       });
+    }
+  }
+
+  /// 수면 측정 디바이스 설정 로드
+  Future<void> _loadSleepMeasurementDevice() async {
+    try {
+      final device = await _storage.read(key: 'sleep_measurement_device');
+      setState(() {
+        _sleepMeasurementDevice = device ?? 'device';
+      });
+      print('✅ HomeScreen - 수면 측정 디바이스: $_sleepMeasurementDevice');
+      
+      // 디바이스 설정 로드 후 데이터 로드
+      await _checkPermissionAndLoadData();
+    } catch (e) {
+      print('⚠️ 수면 측정 디바이스 로드 실패: $e');
+      // 실패해도 기본값(device)으로 데이터 로드
+      await _checkPermissionAndLoadData();
     }
   }
 
@@ -72,16 +102,90 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       isLoading = true;
     });
-    final bool hasPermission = await _healthService.isHealthAppAvailable();
-    setState(() {
-      hasHealthPermission = hasPermission;
-    });
-    if (hasPermission) {
-      await _loadTodaySleepData();
+
+    print('HomeScreen - 선택된 측정 방식: $_sleepMeasurementDevice');
+
+    if (_sleepMeasurementDevice == 'watch') {
+      // 워치 데이터 (HealthKit) 사용
+      final bool hasPermission = await _healthService.isHealthAppAvailable();
+      setState(() {
+        hasHealthPermission = hasPermission;
+      });
+      if (hasPermission) {
+        await _loadTodaySleepData();
+      }
+    } else {
+      // 디바이스로 측정 (로컬 저장된 센서 데이터) 사용
+      await _loadDeviceSleepData();
     }
+
     setState(() {
       isLoading = false;
     });
+  }
+
+  /// 디바이스로 측정한 수면 데이터 로드
+  Future<void> _loadDeviceSleepData() async {
+    try {
+      print('📱 HomeScreen - 디바이스 수면 데이터 로드 시작');
+      
+      // 로컬에 저장된 수면 데이터 불러오기
+      final savedDataList = await SleepDataStorageService.getSavedDataList();
+      print('📱 HomeScreen - 저장된 수면 데이터 수: ${savedDataList.length}');
+      
+      if (savedDataList.isEmpty) {
+        print('📱 HomeScreen - 저장된 수면 데이터 없음');
+        setState(() {
+          todaySleepData = null;
+        });
+        return;
+      }
+
+      // 가장 최근 데이터 가져오기 (첫 번째 요소)
+      final latestData = savedDataList.first;
+      final sessionId = latestData['sessionId'] as String;
+      final filePath = latestData['filePath'] as String;
+      print('📱 HomeScreen - 최근 수면 데이터: $sessionId');
+      
+      // 상세 데이터 로드
+      final recordingData = await SleepDataStorageService.loadSleepData(filePath);
+
+      // SleepRecordingData를 SleepData 형식으로 변환
+      final now = DateTime.now();
+      final convertedSleepData = SleepData(
+        id: recordingData.sessionId,
+        sleepDate: DateTime(
+          recordingData.startTime.year,
+          recordingData.startTime.month,
+          recordingData.startTime.day,
+        ),
+        bedTime: recordingData.startTime,
+        sleepTime: recordingData.startTime,
+        wakeTime: recordingData.endTime,
+        totalSleepDuration: Duration(seconds: recordingData.duration.toInt()),
+        // 디바이스 데이터는 수면 단계 정보가 없으므로 기본값 설정
+        deepSleepDuration: const Duration(minutes: 0),
+        lightSleepDuration: const Duration(minutes: 0),
+        remSleepDuration: const Duration(minutes: 0),
+        awakeTimeDuration: const Duration(minutes: 0),
+        sleepQualityScore: recordingData.dataQuality.contains('양호') ? 85.0 : 70.0,
+        sourceId: 'device_sensor',
+        recordedAt: now,
+      );
+
+      setState(() {
+        todaySleepData = convertedSleepData;
+        // rawSleepDataPoints는 HealthKit 전용이므로 비워둠
+        rawSleepDataPoints = [];
+      });
+
+      print('✅ 디바이스 수면 데이터 변환 완료: ${convertedSleepData.totalSleepDuration.inHours}시간 ${convertedSleepData.totalSleepDuration.inMinutes % 60}분');
+    } catch (e) {
+      print('❌ 디바이스 수면 데이터 로드 실패: $e');
+      setState(() {
+        todaySleepData = null;
+      });
+    }
   }
 
   Future<void> _loadTodaySleepData() async {
