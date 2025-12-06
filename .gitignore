@@ -32,6 +32,10 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+.metadata
+.packages
+coverage/
+test/.test_coverage.dart
 
 # Symbolication related
 app.*.symbols
@@ -43,3 +47,39 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/.gradle/
+/android/.idea/
+/android/.cxx/
+/android/.externalNativeBuild/
+/android/local.properties
+/android/app/local.properties
+
+# iOS related
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/ServiceDefinitions.json
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/xcuserdata/
+ios/Pods.xcodeproj/xcuserdata/
+ios/.flutter-plugins
+ios/.flutter-plugins-dependencies
+
+# macOS related
+macos/Pods/
+macos/.symlinks/
+macos/Flutter/Flutter.framework
+macos/Flutter/Flutter.podspec
+macos/ServiceDefinitions.json
+macos/Runner.xcworkspace/xcuserdata/
+macos/Runner.xcodeproj/xcuserdata/
+macos/Pods.xcodeproj/xcuserdata/
+macos/.flutter-plugins
+macos/.flutter-plugins-dependencies
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.staging
