@@ -380,7 +380,7 @@ class _SleepTrackingScreenState extends State<SleepTrackingScreen> {
                                 isSelected: _selectedActivities.contains('exercise'),
                               ),
                               _buildActivityChip(
-                                label: '헬드폰',
+                                label: '핸드폰',
                                 emoji: '📱',
                                 value: 'phone',
                                 isSelected: _selectedActivities.contains('phone'),

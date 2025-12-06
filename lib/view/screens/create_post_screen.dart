@@ -21,16 +21,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final TextEditingController _contentController = TextEditingController();
   final TextEditingController _tagController = TextEditingController();
 
-  String _selectedCategory = 'daily';
+  String _selectedCategory = 'experience';
   List<String> _tags = [];
   bool _isPublic = true;
   bool _isLoading = false;
 
   final List<Map<String, String>> _categories = [
-    {'key': 'friend', 'name': '친구'},
-    {'key': 'sleep_trouble', 'name': '잠이 안와요'},
     {'key': 'sleep_tip', 'name': '수면 쿨팁'},
-    {'key': 'daily', 'name': '일상'},
+    {'key': 'question', 'name': '잠이 안와요'},
+    {'key': 'experience', 'name': '일상'},
+    {'key': 'challenge', 'name': '챌린지'},
   ];
 
   @override
@@ -60,13 +60,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
-      child: Scaffold(
+    return GestureDetector(
+      onTap: () {
+        // 키보드 숨기기
+        FocusScope.of(context).unfocus();
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+        child: Scaffold(
         backgroundColor: const Color(0xFF2D1B69),
         appBar: AppBar(
           backgroundColor: Colors.transparent,
@@ -132,6 +137,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   ],
                 ),
               ),
+        ),
       ),
     );
   }
@@ -140,8 +146,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.15),
+            Colors.white.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,7 +168,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF2D1B69),
+              color: Colors.white,
             ),
           ),
           
@@ -174,17 +191,33 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF6B46C1)
-                        : Colors.grey[200],
+                    gradient: isSelected
+                        ? const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF6C5CE7),
+                              Color(0xFF5A4FCF),
+                            ],
+                          )
+                        : null,
+                    color: isSelected ? null : Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected 
+                          ? Colors.transparent 
+                          : Colors.white.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Text(
                     category['name']!,
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: isSelected ? Colors.white : Colors.grey[700],
+                      color: isSelected 
+                          ? Colors.white 
+                          : Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
                 ),
@@ -200,8 +233,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.15),
+            Colors.white.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,7 +255,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF2D1B69),
+              color: Colors.white,
             ),
           ),
           
@@ -219,10 +263,32 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
               hintText: '제목을 입력하세요',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.all(12),
+              hintStyle: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.3),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.3),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Color(0xFF6C5CE7),
+                  width: 2,
+                ),
+              ),
+              contentPadding: const EdgeInsets.all(12),
             ),
             maxLength: 100,
           ),
@@ -235,8 +301,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.15),
+            Colors.white.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,7 +323,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF2D1B69),
+              color: Colors.white,
             ),
           ),
           
@@ -254,10 +331,32 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           
           TextField(
             controller: _contentController,
-            decoration: const InputDecoration(
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
               hintText: '내용을 입력하세요',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.all(12),
+              hintStyle: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.3),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.3),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Color(0xFF6C5CE7),
+                  width: 2,
+                ),
+              ),
+              contentPadding: const EdgeInsets.all(12),
             ),
             maxLines: 8,
             maxLength: 5000,
@@ -271,8 +370,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.15),
+            Colors.white.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,7 +392,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF2D1B69),
+              color: Colors.white,
             ),
           ),
           
@@ -293,10 +403,32 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               Expanded(
                 child: TextField(
                   controller: _tagController,
-                  decoration: const InputDecoration(
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
                     hintText: '태그를 입력하세요',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.all(12),
+                    hintStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF6C5CE7),
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.all(12),
                   ),
                   onSubmitted: _addTag,
                 ),
@@ -307,8 +439,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ElevatedButton(
                 onPressed: () => _addTag(_tagController.text),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6B46C1),
+                  backgroundColor: const Color(0xFF6C5CE7),
                   foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: const Text('추가'),
               ),
@@ -325,11 +460,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   label: Text(tag),
                   deleteIcon: const Icon(Icons.close, size: 16),
                   onDeleted: () => _removeTag(tag),
-                  backgroundColor: const Color(0xFF6B46C1).withOpacity(0.1),
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
                   labelStyle: const TextStyle(
-                    color: Color(0xFF6B46C1),
+                    color: Colors.white,
                     fontSize: 12,
                   ),
+                  deleteIconColor: Colors.white,
                 );
               }).toList(),
             ),
@@ -343,29 +479,40 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.15),
+            Colors.white.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   '공개 설정',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF2D1B69),
+                    color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   '모든 사용자에게 공개',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey,
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -379,7 +526,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 _isPublic = value;
               });
             },
-            activeColor: const Color(0xFF6B46C1),
+            activeColor: const Color(0xFF6C5CE7),
+            activeTrackColor: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
+            inactiveThumbColor: Colors.white.withValues(alpha: 0.7),
+            inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
           ),
         ],
       ),

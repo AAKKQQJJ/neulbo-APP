@@ -20,6 +20,38 @@ NEULBO는 두 가지 수면 데이터 소스를 지원합니다:
 
 두 시스템 모두 동일한 LLM 피드백 엔진을 통해 일관된 수면 개선 조언을 제공합니다.
 
+## 📋 API 엔드포인트 목록
+
+### NEULBO-ML-SERVER (FastAPI)
+- **헬스체크 API**
+  - `GET /api/ml/health/check` - 시스템 헬스체크
+  - `GET /api/ml/health/detailed` - 상세 헬스체크 정보
+  - `GET /api/ml/health/metrics` - 시스템 메트릭 조회
+  - `POST /api/ml/health/record-metrics` - 메트릭 기록
+
+- **수면 분석 API (스마트폰 센서)**
+  - `POST /api/ml/sleep/analyze` - 수면 데이터 분석
+  - `GET /api/ml/sleep/history` - 수면 분석 기록 조회
+  - `GET /api/ml/sleep/result/{analysis_id}` - 개별 분석 결과 조회
+  - `GET /api/ml/sleep/models` - ML 모델 정보 조회
+  - `DELETE /api/ml/sleep/analysis/{analysis_id}` - 분석 결과 삭제
+
+- **LLM 피드백 API**
+  - `POST /api/ml/llm/feedback` - LLM 피드백 생성 (스마트폰 + 웨어러블 데이터 지원)
+  - `GET /api/ml/llm/feedback/history/{user_id}` - LLM 피드백 기록 조회
+  - `GET /api/ml/llm/feedback/{feedback_id}` - 개별 피드백 조회
+  - `GET /api/ml/llm/health/llm` - LLM 서비스 상태 확인
+
+- **웨어러블 기기 API**
+  - `POST /api/ml/wearable/analyze` - 웨어러블 데이터 분석 🔐 **JWT 인증 필요**
+  - `POST /api/ml/wearable/test` - 테스트용 웨어러블 데이터 저장 🧪 **개발용**
+  - `GET /api/ml/wearable/devices` - 지원 기기 목록 조회
+
+### NEULBO-SERVER (Spring Boot)
+- **OAuth 인증 API**
+- **사용자 관리 API** 
+- **음악 스트리밍 API**
+
 ## 서버 구성
 
 ### 도메인 및 프록시 설정
@@ -747,7 +779,7 @@ curl -X GET "http://localhost:8000/api/ml/llm/health/llm"
 웨어러블 기기(Apple Watch, Galaxy Watch 등)에서 수집된 사전 분석된 수면 데이터를 처리합니다.
 
 #### POST /api/ml/wearable/analyze
-웨어러블 기기 수면 데이터 분석 및 저장 (JWT 인증)
+웨어러블 기기 수면 데이터 분석 및 저장
 
 **Request:**
 
@@ -755,12 +787,12 @@ curl -X GET "http://localhost:8000/api/ml/llm/health/llm"
 |------|------|
 | **Method** | POST |
 | **URL** | `/api/ml/wearable/analyze` |
-| **Authentication** | JWT Bearer 토큰 필요 |
+| **Authentication** | **JWT Bearer 토큰 필수** ⚠️ |
 | **Content-Type** | `application/json` |
 
 | Headers | Required | Description |
 |---------|----------|-------------|
-| `Authorization` | ✅ | `Bearer {JWT_TOKEN}` (Spring Boot에서 발급된 토큰) |
+| `Authorization` | ✅ | `Bearer {JWT_TOKEN}` (Spring Boot 서버에서 발급된 JWT 토큰) |
 | `Content-Type` | ✅ | `application/json` |
 
 | Query Parameters | Type | Required | Description |
@@ -769,52 +801,22 @@ curl -X GET "http://localhost:8000/api/ml/llm/health/llm"
 
 | Request Body | Type | Required | Description | Validation |
 |--------------|------|----------|-------------|------------|
-| ~~`user_id`~~ | ~~string~~ | ~~✅~~ | ~~사용자 ID~~ | **JWT 토큰에서 자동 추출** |
-| `device_type` | string | ✅ | 웨어러블 기기 타입 | "apple_watch", "galaxy_watch" |
-| `sleep_start` | datetime | ✅ | 수면 시작 시간 | ISO 8601 형식 |
-| `sleep_end` | datetime | ✅ | 수면 종료 시간 | ISO 8601 형식 |
-| `sleep_stages` | array | ✅ | 수면 단계별 데이터 | 최소 1개 이상 |
-| `heart_rate` | float | ➖ | 평균 심박수 | 30.0-200.0 bpm |
-| `sleep_analysis_metadata` | object | ➖ | 기기별 메타데이터 | - |
-| `device_id` | string | ➖ | 기기 고유 ID | 최대 50자 |
+| `device_type` | string | ✅ | 웨어러블 기기 타입 | "apple_watch", "galaxy_watch", "unknown" |
+| `sleep_start` | datetime | ❌ | 수면 시작 시간 (테스트용 샘플 생성됨) | ISO 8601 형식 |
+| `sleep_end` | datetime | ❌ | 수면 종료 시간 (테스트용 샘플 생성됨) | ISO 8601 형식 |
+| `sleep_stages` | array | ❌ | 수면 단계별 데이터 (테스트용 샘플 생성됨) | - |
+| `heart_rate` | float | ❌ | 평균 심박수 (테스트용 샘플 생성됨) | 30.0-200.0 bpm |
+
+> **⚠️ 인증 변경사항**: 이전 버전에서는 `user_id`를 요청 본문에 포함했으나, 현재는 **JWT 토큰에서 자동 추출**합니다.
 
 **Request Example:**
 ```bash
+# JWT 토큰이 필수입니다 (Spring Boot 서버에서 발급받은 토큰)
 curl -X POST "http://localhost:8000/api/ml/wearable/analyze" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxZTFiOTc1YS1lNzYzLTRkYjMtOTNkMy1jY2NiMTBiODdkODIiLCJpYXQiOjE3MzAwMTk2MDAsImV4cCI6MTczMDEwNjAwMH0.example" \
   -H "Content-Type: application/json" \
   -d '{
-    "device_type": "apple_watch",
-    "sleep_start": "2025-10-01T22:00:00Z",
-    "sleep_end": "2025-10-02T06:00:00Z",
-    "sleep_stages": [
-      {
-        "start_time": "2025-10-01T22:00:00Z",
-        "end_time": "2025-10-01T22:30:00Z",
-        "sleep_stage": "inbed"
-      },
-      {
-        "start_time": "2025-10-01T22:30:00Z",
-        "end_time": "2025-10-01T23:00:00Z",
-        "sleep_stage": "core"
-      },
-      {
-        "start_time": "2025-10-01T23:00:00Z",
-        "end_time": "2025-10-02T01:00:00Z",
-        "sleep_stage": "deep"
-      },
-      {
-        "start_time": "2025-10-02T01:00:00Z",
-        "end_time": "2025-10-02T03:00:00Z",
-        "sleep_stage": "rem"
-      }
-    ],
-    "heart_rate": 61.5,
-    "sleep_analysis_metadata": {
-      "source": "HealthKit",
-      "device_model": "Apple Watch Series 8"
-    },
-    "device_id": "AW-12345"
+    "device_type": "apple_watch"
   }'
 ```
 
@@ -823,34 +825,45 @@ curl -X POST "http://localhost:8000/api/ml/wearable/analyze" \
 **Success Response (200 OK):**
 ```json
 {
+  "message": "웨어러블 수면 분석이 성공적으로 완료되었습니다",
   "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
-  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": "1e1b975a-e763-4db3-93d3-cccb10b87d82",
   "device_type": "apple_watch",
-  "status": "processed",
-  "processed_at": "2025-10-02T06:15:30Z",
-  "calculated_metrics": {
+  "sleep_start": "2025-10-28T14:00:00Z",
+  "sleep_end": "2025-10-29T21:30:00Z",
+  "efficiency": 87.5,
+  "total_sleep_time": 420,
+  "standardized_metrics": {
     "total_sleep_time": 420,
     "sleep_efficiency": 87.5,
     "wake_time": 30,
-    "n2_time": 210,
-    "n3_time": 120,
+    "light_sleep_time": 180,
+    "deep_sleep_time": 120,
     "rem_time": 120,
-    "wake_percentage": 7.1,
-    "n2_percentage": 50.0,
-    "n3_percentage": 28.6,
-    "rem_percentage": 28.6
+    "heart_rate_avg": 65.5,
+    "data_quality_score": 0.95
   },
-  "llm_analysis_ready": true
+  "timestamp": "2025-10-29T06:15:30Z"
 }
 ```
 
-**Error Response Example (400 Bad Request - 데이터 검증 실패):**
+**Error Response Example (401 Unauthorized - JWT 토큰 오류):**
 ```json
 {
-  "error_code": "HTTP_400",
-  "error_message": "데이터 검증 실패: 비정상적인 수면 시간: 25.2시간",
-  "timestamp": "2025-01-15T10:30:00Z",
-  "request_id": "req_abc123def456"
+  "error_code": "HTTP_401", 
+  "error_message": "JWT 토큰이 유효하지 않습니다",
+  "timestamp": "2025-10-29T10:30:00Z",
+  "request_id": "req_jwt_error"
+}
+```
+
+**Error Response Example (404 Not Found - 사용자 미존재):**
+```json
+{
+  "error_code": "HTTP_404",
+  "error_message": "사용자를 찾을 수 없습니다",
+  "timestamp": "2025-10-29T10:30:00Z", 
+  "request_id": "req_user_notfound"
 }
 ```
 
@@ -923,6 +936,77 @@ curl -X GET "http://localhost:8000/api/ml/wearable/devices"
     "data_source": "Samsung Health"
   }
 ]
+```
+
+**Fail Response (500 Internal Server Error):**
+```json
+{
+  "error_code": "INTERNAL_SERVER_ERROR",
+  "error_message": "기기 목록 조회 중 오류가 발생했습니다",
+  "timestamp": "2025-01-15T10:30:00Z",
+  "request_id": "req_abc123def456"
+}
+```
+
+---
+
+#### POST /api/ml/wearable/test
+테스트용 웨어러블 데이터 저장 (개발/디버깅용)
+
+**Request:**
+
+| 구분 | 내용 |
+|------|------|
+| **Method** | POST |
+| **URL** | `/api/ml/wearable/test` |
+| **Authentication** | 불필요 (테스트용) |
+| **Content-Type** | `application/json` |
+
+| Headers | Required | Description |
+|---------|----------|-------------|
+| Content-Type | ✅ | application/json |
+
+| Query Parameters | Type | Required | Description |
+|------------------|------|----------|-------------|
+| 없음 | - | - | - |
+
+| Request Body | Type | Required | Description | Validation |
+|--------------|------|----------|-------------|------------|
+| device_type | string | ❌ | 웨어러블 기기 타입 (기본값: "apple_watch") | apple_watch, galaxy_watch 등 |
+
+**Request Example:**
+```bash
+curl -X POST "http://localhost:8000/api/ml/wearable/test" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "device_type": "apple_watch"
+  }'
+```
+
+**Response:**
+
+**Success Response (200 OK):**
+```json
+{
+  "message": "테스트 웨어러블 데이터가 성공적으로 저장되었습니다",
+  "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": "1e1b975a-e763-4db3-93d3-cccb10b87d82",
+  "device_type": "apple_watch",
+  "sleep_start": "2025-10-28T14:00:00Z",
+  "sleep_end": "2025-10-29T21:30:00Z",
+  "efficiency": 87.5,
+  "total_sleep_time": 420
+}
+```
+
+**Fail Response (500 Internal Server Error):**
+```json
+{
+  "error_code": "INTERNAL_SERVER_ERROR", 
+  "error_message": "저장 실패: [오류 내용]",
+  "timestamp": "2025-10-29T10:30:00Z",
+  "request_id": "req_test123"
+}
 ```
 
 ---
@@ -3726,6 +3810,114 @@ curl -X PUT "https://neulbo1.com/api/v1/posts/550e8400-e29b-41d4-a716-4466554400
 ```bash
 curl -X DELETE "https://neulbo1.com/api/v1/posts/550e8400-e29b-41d4-a716-446655440000" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```#### PUT /api/v1/friends/requests/{requestId}
+친구 요청 응답 (수락/거절)
+
+**Request:**
+
+| 구분 | 내용 |
+|------|------|
+| **Method** | PUT |
+| **URL** | `/api/v1/friends/requests/{requestId}` |
+| **Authentication** | ✅ Required |
+| **Content-Type** | `application/json` |
+
+| Headers | Required | Description |
+|---------|----------|-------------|
+| `Authorization` | ✅ | `Bearer {access_token}` |
+| `Content-Type` | ✅ | `application/json` |
+
+| Path Parameters | Type | Required | Description |
+|------------------|------|----------|-------------|
+| `requestId` | string | ✅ | 친구 요청 ID |
+
+| Request Body | Type | Required | Description | Validation |
+|--------------|------|----------|-------------|------------|
+| `action` | string | ✅ | 응답 액션 | ACCEPT, REJECT |
+
+**Request Example:**
+```bash
+curl -X PUT "https://neulbo1.com/api/v1/friends/requests/aa0e8400-e29b-41d4-a716-446655440005" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "ACCEPT"
+  }'
+```
+
+**Response:**
+
+**Success Response (200 OK) - 수락:**
+```json
+{
+  "friendRequestId": "aa0e8400-e29b-41d4-a716-446655440005",
+  "status": "ACCEPTED",
+  "processedAt": "2025-10-20T13:30:00Z",
+  "friendship": {
+    "friendshipId": "bb0e8400-e29b-41d4-a716-446655440006",
+    "user1Id": "660e8400-e29b-41d4-a716-446655440001",
+    "user2Id": "990e8400-e29b-41d4-a716-446655440004",
+    "createdAt": "2025-10-20T13:30:00Z"
+  }
+}
+```
+
+**Success Response (200 OK) - 거절:**
+```json
+{
+  "friendRequestId": "aa0e8400-e29b-41d4-a716-446655440005",
+  "status": "REJECTED",
+  "processedAt": "2025-10-20T13:30:00Z"
+}
+```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `friendRequestId` | string | 친구 요청 ID |
+| `status` | string | 처리 상태 (ACCEPTED, REJECTED) |
+| `processedAt` | string | 처리 시각 (ISO 8601) |
+| `friendship` | object | 친구 관계 정보 (수락 시에만 포함) |
+| `friendship.friendshipId` | string | 친구 관계 ID |
+| `friendship.user1Id` | string | 사용자 1 ID |
+| `friendship.user2Id` | string | 사용자 2 ID |
+| `friendship.createdAt` | string | 친구 관계 생성 시각 (ISO 8601) |
+
+**Error Response (400 Bad Request) - 잘못된 액션:**
+```json
+{
+  "success": false,
+  "message": "유효하지 않은 액션입니다: INVALID_ACTION",
+  "timestamp": "2025-10-20T13:30:00Z"
+}
+```
+
+**Error Response (400 Bad Request) - 이미 처리됨:**
+```json
+{
+  "success": false,
+  "message": "이미 처리된 친구 요청입니다",
+  "timestamp": "2025-10-20T13:30:00Z"
+}
+```
+
+**Error Response (400 Bad Request) - 권한 없음:**
+```json
+{
+  "success": false,
+  "message": "이 친구 요청에 응답할 권한이 없습니다",
+  "timestamp": "2025-10-20T13:30:00Z"
+}
+```
+
+**Error Response (404 Not Found):**
+```json
+{
+  "success": false,
+  "message": "친구 요청을 찾을 수 없습니다",
+  "timestamp": "2025-10-20T13:30:00Z"
+}
 ```
 
 **Response:**
@@ -4101,6 +4293,7 @@ curl -X GET "https://neulbo1.com/api/v1/friends?search=수면&sort=name" \
   "timestamp": "2025-10-20T13:30:00Z"
 }
 ```
+
 
 ---
 

@@ -6,7 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
-import 'package:flutter_naver_login/flutter_naver_login.dart';
+// import 'package:flutter_naver_login/flutter_naver_login.dart'; // 빌드 문제로 임시 비활성화
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -66,7 +66,8 @@ class OAuthService {
       case 'kakao':
         return await _handleKakaoSignIn();
       case 'naver':
-        return await _handleNaverSignIn();
+        // return await _handleNaverSignIn(); // 빌드 문제로 임시 비활성화
+        throw Exception('현재 문제가 생겨 네이버 로그인이 불가능합니다. 다른 로그인 방법을 이용해주세요.');
       default:
         throw Exception('Unsupported OAuth provider: $provider');
     }
@@ -198,6 +199,13 @@ class OAuthService {
       }
     } catch (e) {
       print('Google 백엔드 인증 에러: $e');
+      
+      // 502 에러인 경우 사용자에게 알림
+      if (e.toString().contains('502')) {
+        print('🚨 서버 연결 문제로 로그인에 실패했습니다');
+        print('💡 잠시 후 다시 시도해주세요');
+      }
+      
       return false;
     }
   }
@@ -297,11 +305,19 @@ class OAuthService {
       );
     } catch (e) {
       print('Kakao 백엔드 인증 에러: $e');
+      
+      // 502 에러인 경우 사용자에게 알림
+      if (e.toString().contains('502')) {
+        print('🚨 서버 연결 문제로 로그인에 실패했습니다');
+        print('💡 잠시 후 다시 시도해주세요');
+      }
+      
       return false;
     }
   }
 
-  // Naver Sign-In 처리
+  // Naver Sign-In 처리 (빌드 문제로 임시 비활성화)
+  /*
   static Future<bool> _handleNaverSignIn() async {
     try {
       print('=== 네이버 로그인 시작 ===');
@@ -362,8 +378,10 @@ class OAuthService {
       return false;
     }
   }
+  */
 
-  // Naver 사용자 데이터를 백엔드로 전송
+  // Naver 사용자 데이터를 백엔드로 전송 (빌드 문제로 임시 비활성화)
+  /*
   static Future<bool> _sendNaverUserDataToBackend(NaverAccountResult account) async {
     try {
       print('Naver 사용자 데이터 전송 중...');
@@ -391,6 +409,7 @@ class OAuthService {
       return false;
     }
   }
+  */
 
   // OAuth 응답 공통 처리
   static Future<bool> _processOAuthResponse({
@@ -511,11 +530,14 @@ class OAuthService {
       print('Kakao 로그아웃 에러: $e');
     }
     
+    // 네이버 로그아웃 (빌드 문제로 임시 비활성화)
+    /*
     try {
       await FlutterNaverLogin.logOut();
     } catch (e) {
       print('Naver 로그아웃 에러: $e');
     }
+    */
   }
 
   /// Keychain의 모든 데이터 삭제 (디버깅/테스트용)

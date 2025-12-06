@@ -8,13 +8,14 @@ class Post {
   final String authorId;
   final String authorNickname;
   final String? authorProfileImage;
+  final List<String>? imageUrls; // 게시글 이미지 URL 목록
   final DateTime createdAt;
   final DateTime updatedAt;
   final int viewCount;
   final int likeCount;
   final int commentCount;
   final bool isLiked;
-  final List<Comment>? comments;
+  final List<Comment> comments;
 
   const Post({
     required this.postId,
@@ -26,13 +27,14 @@ class Post {
     required this.authorId,
     required this.authorNickname,
     this.authorProfileImage,
+    this.imageUrls,
     required this.createdAt,
     required this.updatedAt,
     required this.viewCount,
     required this.likeCount,
     required this.commentCount,
     this.isLiked = false,
-    this.comments,
+    this.comments = const [],
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
@@ -46,8 +48,15 @@ class Post {
       authorId: json['authorId'] as String,
       authorNickname: json['authorNickname'] as String,
       authorProfileImage: json['authorProfileImage'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      imageUrls: json['imageUrls'] != null 
+          ? List<String>.from(json['imageUrls'] as List)
+          : null,
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null 
+          ? DateTime.parse(json['updatedAt'] as String)
+          : DateTime.now(),
       viewCount: json['viewCount'] as int,
       likeCount: json['likeCount'] as int,
       commentCount: json['commentCount'] as int,
@@ -55,7 +64,7 @@ class Post {
       comments: json['comments'] != null
           ? List<Comment>.from(
               (json['comments'] as List).map((x) => Comment.fromJson(x)))
-          : null,
+          : const [],
     );
   }
 
@@ -70,13 +79,14 @@ class Post {
       'authorId': authorId,
       'authorNickname': authorNickname,
       'authorProfileImage': authorProfileImage,
+      'imageUrls': imageUrls,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'viewCount': viewCount,
       'likeCount': likeCount,
       'commentCount': commentCount,
       'isLiked': isLiked,
-      'comments': comments?.map((x) => x.toJson()).toList(),
+      'comments': comments.map((x) => x.toJson()).toList(),
     };
   }
 
@@ -173,19 +183,45 @@ class Comment {
       'isLiked': isLiked,
     };
   }
+
+  Comment copyWith({
+    String? commentId,
+    String? content,
+    String? postId,
+    String? authorId,
+    String? authorNickname,
+    String? authorProfileImage,
+    String? parentCommentId,
+    DateTime? createdAt,
+    int? likeCount,
+    bool? isLiked,
+  }) {
+    return Comment(
+      commentId: commentId ?? this.commentId,
+      content: content ?? this.content,
+      postId: postId ?? this.postId,
+      authorId: authorId ?? this.authorId,
+      authorNickname: authorNickname ?? this.authorNickname,
+      authorProfileImage: authorProfileImage ?? this.authorProfileImage,
+      parentCommentId: parentCommentId ?? this.parentCommentId,
+      createdAt: createdAt ?? this.createdAt,
+      likeCount: likeCount ?? this.likeCount,
+      isLiked: isLiked ?? this.isLiked,
+    );
+  }
 }
 
 class PostCategory {
-  static const String friend = 'friend';
-  static const String sleepTrouble = 'sleep_trouble';
   static const String sleepTip = 'sleep_tip';
-  static const String daily = 'daily';
+  static const String question = 'question';
+  static const String experience = 'experience';
+  static const String challenge = 'challenge';
 
   static const Map<String, String> categoryNames = {
-    friend: '친구',
-    sleepTrouble: '잠이 안와요',
     sleepTip: '수면 쿨팁',
-    daily: '일상',
+    question: '잠이 안와요',
+    experience: '일상',
+    challenge: '챌린지',
   };
 
   static String getDisplayName(String category) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../const/design_constants.dart';
 import '../../models/chat_message.dart';
@@ -437,7 +438,8 @@ class _SleepChatScreenState extends State<SleepChatScreen> {
                         ),
                       ],
                     )
-                  else
+                  else if (isUser)
+                    // 사용자 메시지는 일반 텍스트
                     Text(
                       message.content,
                       style: TextStyle(
@@ -445,6 +447,85 @@ class _SleepChatScreenState extends State<SleepChatScreen> {
                         fontSize: 14,
                         fontFamily: 'suit',
                         height: 1.5,
+                      ),
+                    )
+                  else
+                    // AI 메시지는 마크다운 렌더링
+                    MarkdownBody(
+                      data: message.content,
+                      selectable: true,
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontFamily: 'suit',
+                          height: 1.5,
+                        ),
+                        h1: const TextStyle(
+                          color: Color(0xFFAF99FF),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'suit',
+                        ),
+                        h2: const TextStyle(
+                          color: Color(0xFFAF99FF),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'suit',
+                        ),
+                        h3: const TextStyle(
+                          color: Color(0xFFAF99FF),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'suit',
+                        ),
+                        strong: const TextStyle(
+                          color: Color(0xFFAF99FF),
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'suit',
+                        ),
+                        em: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontStyle: FontStyle.italic,
+                          fontFamily: 'suit',
+                        ),
+                        code: TextStyle(
+                          backgroundColor: Colors.white.withOpacity(0.1),
+                          color: const Color(0xFFAF99FF),
+                          fontFamily: 'monospace',
+                          fontSize: 13,
+                        ),
+                        codeblockDecoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1,
+                          ),
+                        ),
+                        blockquote: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontFamily: 'suit',
+                        ),
+                        blockquoteDecoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border(
+                            left: BorderSide(
+                              color: const Color(0xFFAF99FF),
+                              width: 4,
+                            ),
+                          ),
+                        ),
+                        listBullet: const TextStyle(
+                          color: Color(0xFFAF99FF),
+                          fontFamily: 'suit',
+                        ),
+                        a: const TextStyle(
+                          color: Color(0xFFAF99FF),
+                          decoration: TextDecoration.underline,
+                          fontFamily: 'suit',
+                        ),
                       ),
                     ),
                   const SizedBox(height: 4),

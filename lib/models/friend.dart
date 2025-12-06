@@ -74,7 +74,7 @@ class FriendRequest {
   final FriendUser toUser;
   final String? message;
   final FriendRequestStatus status;
-  final DateTime createdAt;
+  final DateTime? createdAt;
   final DateTime? processedAt;
 
   const FriendRequest({
@@ -83,7 +83,7 @@ class FriendRequest {
     required this.toUser,
     this.message,
     required this.status,
-    required this.createdAt,
+    this.createdAt,
     this.processedAt,
   });
 
@@ -94,7 +94,9 @@ class FriendRequest {
       toUser: FriendUser.fromJson(json['toUser'] as Map<String, dynamic>),
       message: json['message'] as String?,
       status: FriendRequestStatus.fromString(json['status'] as String),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
       processedAt: json['processedAt'] != null
           ? DateTime.parse(json['processedAt'] as String)
           : null,
@@ -108,7 +110,7 @@ class FriendRequest {
       'toUser': toUser.toJson(),
       'message': message,
       'status': status.toString(),
-      'createdAt': createdAt.toIso8601String(),
+      'createdAt': createdAt?.toIso8601String(),
       'processedAt': processedAt?.toIso8601String(),
     };
   }
@@ -190,13 +192,19 @@ class UserSearchResult {
   });
 
   factory UserSearchResult.fromJson(Map<String, dynamic> json) {
+    // 서버 응답에 맞게 필드 매핑
     return UserSearchResult(
       userId: json['userId'] as String,
-      nickname: json['nickname'] as String,
-      profileImage: json['profileImage'] as String?,
-      friendshipStatus: FriendshipStatus.fromString(json['friendshipStatus'] as String),
-      mutualFriendsCount: json['mutualFriendsCount'] as int,
+      nickname: json['username'] as String, // 서버에서는 username 필드 사용
+      profileImage: json['profileImageUrl'] as String?, // 서버에서는 profileImageUrl 필드 사용
+      friendshipStatus: _mapIsFriendToStatus(json['isFriend'] as bool), // isFriend 불린값을 FriendshipStatus로 변환
+      mutualFriendsCount: json['mutualFriendsCount'] as int? ?? 0, // 서버에서 제공하지 않으므로 기본값 0
     );
+  }
+
+  // isFriend 불린값을 FriendshipStatus로 변환하는 헬퍼 메서드
+  static FriendshipStatus _mapIsFriendToStatus(bool isFriend) {
+    return isFriend ? FriendshipStatus.friends : FriendshipStatus.none;
   }
 
   Map<String, dynamic> toJson() {

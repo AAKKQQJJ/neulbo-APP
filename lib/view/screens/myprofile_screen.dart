@@ -29,6 +29,7 @@ class _MyprofileScreenState extends State<MyprofileScreen> {
   String _profileImageUrl = '';
   bool _isMicrophoneGranted = false;
   String _sleepMeasurementDevice = 'device'; // 'device' 또는 'watch'
+  int _sleepGoalHours = 7; // 수면 목표 시간 (기본값: 7시간)
 
   @override
   void initState() {
@@ -36,6 +37,7 @@ class _MyprofileScreenState extends State<MyprofileScreen> {
     _loadUserInfo();
     _checkMicrophonePermission();
     _loadSleepMeasurementDevice();
+    _loadSleepGoal();
   }
 
   @override
@@ -44,6 +46,7 @@ class _MyprofileScreenState extends State<MyprofileScreen> {
     // 화면이 다시 보여질 때마다 권한 상태와 디바이스 설정 재확인
     _checkMicrophonePermission();
     _loadSleepMeasurementDevice();
+    _loadSleepGoal();
   }
 
   Future<void> _loadUserInfo() async {
@@ -230,6 +233,37 @@ class _MyprofileScreenState extends State<MyprofileScreen> {
     }
   }
 
+  /// 수면 목표 시간 로드
+  Future<void> _loadSleepGoal() async {
+    try {
+      final goalString = await _storage.read(key: 'sleep_goal_hours');
+      if (goalString != null) {
+        final hours = int.tryParse(goalString);
+        if (hours != null && hours >= 4 && hours <= 12) {
+          setState(() {
+            _sleepGoalHours = hours;
+          });
+          print('✅ 수면 목표 로드: $_sleepGoalHours시간');
+        }
+      }
+    } catch (e) {
+      print('⚠️ 수면 목표 로드 실패: $e');
+    }
+  }
+
+  /// 수면 목표 시간 저장
+  Future<void> _saveSleepGoal(int hours) async {
+    try {
+      await _storage.write(key: 'sleep_goal_hours', value: hours.toString());
+      setState(() {
+        _sleepGoalHours = hours;
+      });
+      print('✅ 수면 목표 저장: $hours시간');
+    } catch (e) {
+      print('⚠️ 수면 목표 저장 실패: $e');
+    }
+  }
+
   /// 수면 측정 디바이스 선택 다이얼로그
   Future<void> _showSleepMeasurementDeviceDialog() async {
     final selected = await showDialog<String>(
@@ -292,6 +326,319 @@ class _MyprofileScreenState extends State<MyprofileScreen> {
         );
       }
     }
+  }
+
+  /// 수면 목표 선택 다이얼로그
+  Future<void> _showSleepGoalDialog() async {
+    int tempSelectedHours = _sleepGoalHours; // 임시 선택값
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF2D1B69),
+                  Color(0xFF1A0E3F),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 헤더
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.nightlight_round,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        '수면 목표 설정',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'suit',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '하루에 몇 시간 수면을 목표로 하시나요?',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 14,
+                          fontFamily: 'suit',
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // 시간 선택 리스트
+                Flexible(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: 9, // 4시간 ~ 12시간
+                      itemBuilder: (context, index) {
+                        final hours = 4 + index;
+                        return _buildSleepGoalOptionWithCheck(
+                          hours: hours,
+                          isSelected: hours == tempSelectedHours,
+                          onTap: () {
+                            setDialogState(() {
+                              tempSelectedHours = hours;
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                
+                // 버튼
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'suit',
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF2D1B69),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            '확인',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'suit',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed == true && tempSelectedHours != _sleepGoalHours) {
+      await _saveSleepGoal(tempSelectedHours);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ 수면 목표가 하루 $tempSelectedHours시간으로 설정되었습니다',
+              style: const TextStyle(fontFamily: 'suit'),
+            ),
+            backgroundColor: const Color(0xFF2D1B69),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 수면 목표 시간 옵션 위젯 (체크 선택 방식)
+  Widget _buildSleepGoalOptionWithCheck({
+    required int hours,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    String getRecommendation() {
+      if (hours < 6) return '너무 짧아요 😴';
+      if (hours >= 6 && hours <= 8) return '권장 수면 시간 ✨';
+      if (hours > 8 && hours <= 10) return '충분한 휴식 😊';
+      return '긴 수면 시간 💤';
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected 
+            ? Colors.white.withOpacity(0.25) 
+            : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected 
+              ? Colors.white.withOpacity(0.6) 
+              : Colors.white.withOpacity(0.2),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // 시간 표시
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: isSelected
+                  ? const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Colors.white, Color(0xFFE8E8FF)],
+                    )
+                  : null,
+                color: isSelected ? null : Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected 
+                    ? Colors.white.withOpacity(0.5) 
+                    : Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  '$hours',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected 
+                      ? const Color(0xFF2D1B69) 
+                      : Colors.white,
+                    fontFamily: 'suit',
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            
+            // 텍스트 정보
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$hours시간',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected 
+                        ? Colors.white 
+                        : Colors.white.withOpacity(0.9),
+                      fontFamily: 'suit',
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    getRecommendation(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isSelected
+                        ? Colors.white.withOpacity(0.8)
+                        : Colors.white.withOpacity(0.6),
+                      fontFamily: 'suit',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // 체크 아이콘
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected 
+                  ? Colors.white 
+                  : Colors.transparent,
+                border: Border.all(
+                  color: isSelected 
+                    ? Colors.white 
+                    : Colors.white.withOpacity(0.4),
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                ? const Icon(
+                    Icons.check,
+                    color: Color(0xFF2D1B69),
+                    size: 18,
+                  )
+                : null,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// 디바이스 선택 옵션 위젯
@@ -501,16 +848,17 @@ class _MyprofileScreenState extends State<MyprofileScreen> {
                             _buildMenuItem(
                               icon: Icons.bar_chart_rounded,
                               title: '수면 데이터 확인하기',
+                              subtitle: 'HealthKit & 디바이스 데이터 비교',
                               onTap: () {
-                                context.push('/sleep-data-demo');
+                                context.push('/integrated-sleep-data');
                               },
                             ),
                             _buildDivider(),
                             _buildMenuItem(
                               icon: Icons.nightlight_round,
                               title: '수면 목표',
-                              subtitle: '하루 7시간',
-                              onTap: () => _showComingSoon(context),
+                              subtitle: '하루 $_sleepGoalHours시간 😴',
+                              onTap: _showSleepGoalDialog,
                             ),
                             _buildDivider(),
                             _buildMenuItem(

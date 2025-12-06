@@ -842,36 +842,38 @@ class _SleepMonitoringScreenState extends State<SleepMonitoringScreen> {
                           ),
                           const SizedBox(height: 24),
                           // 허용앱 설정 버튼
-                          GestureDetector(
-                            onTap: _showScheduleSettings,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(
-                                    Icons.schedule,
-                                    color: Color(0xFF2D1B69),
-                                    size: 18,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    '허용앱 설정',
-                                    style: TextStyle(
+                          Center(
+                            child: GestureDetector(
+                              onTap: _showScheduleSettings,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(
+                                      Icons.schedule,
                                       color: Color(0xFF2D1B69),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: 'suit',
+                                      size: 18,
                                     ),
-                                  ),
-                                ],
+                                    SizedBox(width: 6),
+                                    Text(
+                                      '허용앱 설정',
+                                      style: TextStyle(
+                                        color: Color(0xFF2D1B69),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        fontFamily: 'suit',
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -888,38 +890,6 @@ class _SleepMonitoringScreenState extends State<SleepMonitoringScreen> {
                               isPlaying: _selectedMusicIndex == index,
                             );
                           }).toList(),
-                          const SizedBox(height: 16),
-                          // 추천 음악 (큰 카드)
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  _featuredIcon,
-                                  style: const TextStyle(fontSize: 48),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _featuredMusic,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'suit',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                           const SizedBox(height: 120),
                         ],
                       ),

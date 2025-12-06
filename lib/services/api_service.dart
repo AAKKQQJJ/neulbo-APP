@@ -90,6 +90,23 @@ class ApiService {
         print('ApiService - 에러 메시지: ${error.message}');
         print('ApiService - 응답 데이터: ${error.response?.data}');
         print('ApiService - 요청 헤더: ${error.requestOptions.headers}');
+        
+        // 502 에러 특별 처리
+        if (error.response?.statusCode == 502) {
+          print('');
+          print('🚨 ========== 502 Bad Gateway 에러 ==========');
+          print('❌ 서버 문제: 백엔드 서버가 응답하지 않습니다');
+          print('🔧 가능한 원인:');
+          print('   1. 백엔드 애플리케이션 서버 다운');
+          print('   2. nginx 프록시 설정 오류');
+          print('   3. 서버 과부하 또는 네트워크 문제');
+          print('💡 해결 방법:');
+          print('   - 서버 관리자에게 문의');
+          print('   - 잠시 후 다시 시도');
+          print('   - 서버 상태 페이지 확인');
+          print('=========================================');
+          print('');
+        }
       }
       
       rethrow;
@@ -503,16 +520,36 @@ class ApiService {
       mlDio.options.connectTimeout = const Duration(minutes: 5);
       mlDio.options.receiveTimeout = const Duration(minutes: 5);
 
+      // JWT 토큰에서 user_id 추출
+      String? userId;
+      try {
+        final parts = token.split('.');
+        if (parts.length == 3) {
+          final payload = parts[1];
+          final normalized = base64Url.normalize(payload);
+          final decoded = utf8.decode(base64Url.decode(normalized));
+          final payloadMap = json.decode(decoded) as Map<String, dynamic>;
+          userId = payloadMap['user_id']?.toString() ?? 
+                   payloadMap['userId']?.toString() ?? 
+                   payloadMap['sub']?.toString();
+        }
+      } catch (e) {
+        print('ApiService - JWT 디코딩 실패 (무시): $e');
+      }
+
       print('');
       print('📤 ========== API 요청 정보 ==========');
       print('ApiService - 요청 URL: ${mlDio.options.baseUrl}/api/ml/sleep/analyze');
       print('ApiService - Authorization: Bearer ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
+      if (userId != null) {
+        print('ApiService - JWT에서 추출한 user_id: $userId');
+      }
       print('==================================');
       print('');
 
       final response = await mlDio.post(
         '/api/ml/sleep/analyze',
-        data: sleepRecordingData.toJson(),
+        data: sleepRecordingData.toJson(userId: userId),
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -522,11 +559,23 @@ class ApiService {
       );
 
       print('ApiService - 수면 데이터 분석 완료: ${response.statusCode}');
+      print('📦 서버 응답 전체: ${response.data}');
       
       // 응답 데이터를 SleepAnalysisResult 객체로 변환
       final result = SleepAnalysisResult.fromJson(response.data as Map<String, dynamic>);
+      print('');
+      print('✅ ========== 디바이스 수면 분석 성공 ==========');
       print('ApiService - 분석 ID: ${result.analysisId}');
+      print('ApiService - 사용자 ID: ${result.userId}');
       print('ApiService - 데이터 품질 점수: ${result.dataQualityScore}');
+      print('ApiService - 분석 시간: ${result.analysisTimestamp}');
+      print('');
+      print('⚠️ 백엔드 개발자 확인 사항:');
+      print('   이 데이터가 DB에 정상 저장되었는지 확인해주세요');
+      print('   SELECT * FROM sleep_analysis WHERE analysis_id = \'${result.analysisId}\';');
+      print('   SELECT * FROM sleep_analysis WHERE user_id = \'${result.userId}\';');
+      print('================================================');
+      print('');
       
       return result;
     } catch (error) {
@@ -635,7 +684,37 @@ class ApiService {
         throw Exception('JWT 토큰이 없습니다. 로그인이 필요합니다.');
       }
 
-      print('ApiService - 수면 분석 이력 조회 요청: page=$page, pageSize=$pageSize');
+      // JWT 토큰에서 user_id 추출 (디버깅용)
+      String? userId;
+      try {
+        final parts = token.split('.');
+        if (parts.length == 3) {
+          final payload = parts[1];
+          final normalized = base64Url.normalize(payload);
+          final decoded = utf8.decode(base64Url.decode(normalized));
+          final payloadMap = json.decode(decoded) as Map<String, dynamic>;
+          userId = payloadMap['user_id']?.toString() ?? 
+                   payloadMap['userId']?.toString() ?? 
+                   payloadMap['sub']?.toString();
+        }
+      } catch (e) {
+        print('⚠️ ApiService - JWT 디코딩 실패: $e');
+      }
+
+      print('');
+      print('🔍 ========== 수면 분석 이력 조회 디버깅 ==========');
+      print('ApiService - 요청 URL: https://neulbo1.com/api/ml/sleep/history');
+      print('ApiService - page=$page, pageSize=$pageSize');
+      print('ApiService - JWT 토큰 길이: ${token.length}자');
+      print('ApiService - JWT에서 추출한 user_id: $userId');
+      print('');
+      print('⚠️ 백엔드 개발자 확인 사항:');
+      print('   1. DB에서 이 user_id로 수면 분석 데이터가 있는지 확인');
+      print('   2. SELECT * FROM sleep_analysis WHERE user_id = \'$userId\';');
+      print('   3. JWT 토큰 파싱이 정상적으로 되는지 확인');
+      print('   4. /api/ml/sleep/history 엔드포인트가 정상 작동하는지 확인');
+      print('================================================');
+      print('');
 
       final mlDio = Dio();
       mlDio.options.baseUrl = 'https://neulbo1.com/api/ml';
@@ -653,13 +732,32 @@ class ApiService {
         ),
       );
 
-      print('ApiService - 수면 분석 이력 조회 완료: ${response.statusCode}');
+      print('✅ ApiService - 수면 분석 이력 조회 완료: ${response.statusCode}');
+      print('📦 응답 데이터: ${response.data}');
       return response;
     } catch (error) {
-      print('ApiService - 수면 분석 이력 조회 실패: $error');
       if (error is DioException) {
-        print('ApiService - 응답 상태: ${error.response?.statusCode}');
-        print('ApiService - 응답 내용: ${error.response?.data}');
+        print('❌ ApiService - 응답 상태: ${error.response?.statusCode}');
+        print('❌ ApiService - 응답 내용: ${error.response?.data}');
+        
+        // 404: 데이터 없음
+        if (error.response?.statusCode == 404) {
+      print('');
+      print('⚠️ 404 에러 발생 - 가능한 원인:');
+      print('   1. DB에 해당 user_id의 수면 분석 데이터가 없음 (가장 가능성 높음)');
+      print('   2. 백엔드에서 JWT 토큰 파싱 실패 (user_id 추출 실패)');
+      print('   3. API 엔드포인트가 구현되지 않음');
+      print('');
+      print('💡 백엔드 개발자에게 전달할 내용:');
+      print('   - DB에 데이터가 있다고 확인했다면, JWT 토큰에서 user_id 추출이 정상적으로 되는지 확인 필요');
+      print('   - JWT 페이로드의 user_id 필드명이 일치하는지 확인 (user_id vs userId vs sub)');
+      print('   - 백엔드 로그에서 실제로 어떤 user_id로 조회하고 있는지 확인');
+      print('');
+        } else {
+          print('❌ ApiService - 수면 분석 이력 조회 실패: $error');
+        }
+      } else {
+        print('❌ ApiService - 수면 분석 이력 조회 실패: $error');
       }
       rethrow;
     }

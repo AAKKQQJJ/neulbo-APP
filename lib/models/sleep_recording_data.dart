@@ -73,24 +73,35 @@ class AccelerometerData {
 class AudioData {
   final DateTime timestamp;                // 측정 시점
   final double relativeTime;               // 수면 시작 대비 상대 시간 (초)
-  final double decibelLevel;               // 소음 레벨 (dB) - Swift와 동일하게 이것만 저장
+  final double amplitude;                  // 진폭 (0.0 ~ 1.0)
+  final List<double> frequencyBands;       // 주파수 대역 (8개)
 
   const AudioData({
     required this.timestamp,
     required this.relativeTime,
-    required this.decibelLevel,
+    required this.amplitude,
+    required this.frequencyBands,
   });
+
+  /// dB 레벨 계산 (로컬 저장용)
+  double get decibelLevel {
+    if (amplitude <= 0) return -80.0;
+    // amplitude (0.0-1.0)를 dB로 변환
+    return 20 * (amplitude * 100).clamp(0.1, 100).toDouble();
+  }
 
   /// 팩토리 생성자: 수면 시작 시간을 기준으로 상대 시간 자동 계산
   factory AudioData.fromSleepStart({
     required DateTime timestamp,
     required DateTime sleepStartTime,
-    required double decibelLevel,
+    required double amplitude,
+    required List<double> frequencyBands,
   }) {
     return AudioData(
       timestamp: timestamp,
       relativeTime: timestamp.difference(sleepStartTime).inSeconds.toDouble(),
-      decibelLevel: decibelLevel,
+      amplitude: amplitude,
+      frequencyBands: frequencyBands,
     );
   }
 
@@ -98,22 +109,48 @@ class AudioData {
   Map<String, dynamic> toJson() {
     return {
       'timestamp': timestamp.toUtc().toIso8601String(),
-      'relativeTime': relativeTime,
-      'decibelLevel': decibelLevel,
+      'amplitude': amplitude,
+      'frequency_bands': frequencyBands,
     };
   }
 
-  /// 로컬 저장용 JSON (API와 동일)
+  /// 로컬 저장용 JSON (모든 데이터 포함)
   Map<String, dynamic> toFullJson() {
-    return toJson();
+    return {
+      'timestamp': timestamp.toUtc().toIso8601String(),
+      'relativeTime': relativeTime,
+      'amplitude': amplitude,
+      'frequency_bands': frequencyBands,
+      'decibelLevel': decibelLevel, // 계산된 값
+    };
   }
 
-  /// JSON에서 복원
+  /// JSON에서 복원 (이전 데이터 호환성 지원)
   factory AudioData.fromJson(Map<String, dynamic> json) {
+    // 이전 데이터 형식 지원 (decibelLevel만 있는 경우)
+    if (json.containsKey('decibelLevel') && !json.containsKey('amplitude')) {
+      final decibelLevel = (json['decibelLevel'] as num).toDouble();
+      // dB를 amplitude로 역변환 (대략적)
+      final amplitude = (decibelLevel / 20.0 / 100.0).clamp(0.0, 1.0);
+      // 기본 frequency_bands 생성
+      final frequencyBands = List.generate(8, (i) => amplitude * (1.0 - i * 0.1));
+      
+      return AudioData(
+        timestamp: DateTime.parse(json['timestamp'] as String),
+        relativeTime: (json['relativeTime'] as num?)?.toDouble() ?? 0.0,
+        amplitude: amplitude,
+        frequencyBands: frequencyBands,
+      );
+    }
+    
+    // 새 데이터 형식 (amplitude와 frequency_bands 있는 경우)
     return AudioData(
       timestamp: DateTime.parse(json['timestamp'] as String),
       relativeTime: (json['relativeTime'] as num?)?.toDouble() ?? 0.0,
-      decibelLevel: (json['decibelLevel'] as num).toDouble(),
+      amplitude: (json['amplitude'] as num).toDouble(),
+      frequencyBands: (json['frequency_bands'] as List)
+          .map((e) => (e as num).toDouble())
+          .toList(),
     );
   }
 }
@@ -126,6 +163,7 @@ class SleepRecordingData {
   final double duration;                   // 총 수면 시간 (초)
   final List<AccelerometerData> accelerometerData;  // 움직임 데이터
   final List<AudioData> audioData;         // 소리 데이터
+  final SleepAnalysisResult? analysisResult;  // ML 분석 결과 (선택적)
 
   const SleepRecordingData({
     required this.sessionId,
@@ -134,6 +172,7 @@ class SleepRecordingData {
     required this.duration,
     required this.accelerometerData,
     required this.audioData,
+    this.analysisResult,
   });
 
   /// 팩토리 생성자: 시작/종료 시간으로부터 자동 계산
@@ -142,6 +181,7 @@ class SleepRecordingData {
     required DateTime endTime,
     required List<AccelerometerData> accelerometerData,
     required List<AudioData> audioData,
+    SleepAnalysisResult? analysisResult,
   }) {
     return SleepRecordingData(
       sessionId: _generateSessionId(),
@@ -150,6 +190,7 @@ class SleepRecordingData {
       duration: endTime.difference(startTime).inSeconds.toDouble(),
       accelerometerData: accelerometerData,
       audioData: audioData,
+      analysisResult: analysisResult,
     );
   }
 
@@ -225,18 +266,29 @@ class SleepRecordingData {
   }
 
   /// API 전송용 JSON (API 명세서 필드명)
-  Map<String, dynamic> toJson() {
-    return {
+  /// 
+  /// [userId]를 선택적으로 받아서 포함시킵니다.
+  /// API 명세서 v3에서는 JWT에서 자동 추출되어야 하지만,
+  /// 백엔드가 업데이트 전까지는 명시적으로 전달해야 합니다.
+  Map<String, dynamic> toJson({String? userId}) {
+    final Map<String, dynamic> json = {
       'recording_start': startTime.toUtc().toIso8601String(),
       'recording_end': endTime.toUtc().toIso8601String(),
       'accelerometer_data': accelerometerData.map((d) => d.toJson()).toList(),
       'audio_data': audioData.map((d) => d.toJson()).toList(),
     };
+    
+    // user_id가 제공된 경우에만 추가
+    if (userId != null && userId.isNotEmpty) {
+      json['user_id'] = userId;
+    }
+    
+    return json;
   }
 
   /// 로컬 저장용 JSON (모든 필드 포함)
   Map<String, dynamic> toFullJson() {
-    return {
+    final Map<String, dynamic> json = {
       'sessionId': sessionId,
       'startTime': startTime.toIso8601String(),
       'endTime': endTime.toIso8601String(),
@@ -244,10 +296,30 @@ class SleepRecordingData {
       'accelerometerData': accelerometerData.map((d) => d.toFullJson()).toList(),
       'audioData': audioData.map((d) => d.toFullJson()).toList(),
     };
+    
+    // ML 분석 결과가 있으면 함께 저장
+    if (analysisResult != null) {
+      json['analysisResult'] = analysisResult!.toJson();
+    }
+    
+    return json;
   }
 
   /// JSON에서 복원
   factory SleepRecordingData.fromJson(Map<String, dynamic> json) {
+    SleepAnalysisResult? analysisResult;
+    
+    // ML 분석 결과가 저장되어 있으면 복원
+    if (json.containsKey('analysisResult') && json['analysisResult'] != null) {
+      try {
+        analysisResult = SleepAnalysisResult.fromJson(
+          json['analysisResult'] as Map<String, dynamic>,
+        );
+      } catch (e) {
+        print('⚠️ ML 분석 결과 복원 실패: $e');
+      }
+    }
+    
     return SleepRecordingData(
       sessionId: json['sessionId'] as String,
       startTime: DateTime.parse(json['startTime'] as String),
@@ -259,6 +331,20 @@ class SleepRecordingData {
       audioData: (json['audioData'] as List)
           .map((e) => AudioData.fromJson(e as Map<String, dynamic>))
           .toList(),
+      analysisResult: analysisResult,
+    );
+  }
+  
+  /// ML 분석 결과를 추가한 새로운 SleepRecordingData 생성
+  SleepRecordingData withAnalysisResult(SleepAnalysisResult result) {
+    return SleepRecordingData(
+      sessionId: sessionId,
+      startTime: startTime,
+      endTime: endTime,
+      duration: duration,
+      accelerometerData: accelerometerData,
+      audioData: audioData,
+      analysisResult: result,
     );
   }
 }
@@ -303,6 +389,21 @@ class SleepAnalysisResult {
       dataQualityScore: (json['data_quality_score'] as num).toDouble(),
     );
   }
+  
+  /// JSON 변환 (저장용)
+  Map<String, dynamic> toJson() {
+    return {
+      'user_id': userId,
+      'analysis_id': analysisId,
+      'analysis_timestamp': analysisTimestamp,
+      'recording_start': recordingStart,
+      'recording_end': recordingEnd,
+      'stage_intervals': stageIntervals.map((e) => e.toJson()).toList(),
+      'summary_statistics': summaryStatistics.toJson(),
+      'model_version': modelVersion,
+      'data_quality_score': dataQualityScore,
+    };
+  }
 }
 
 class StageInterval {
@@ -325,6 +426,15 @@ class StageInterval {
       stage: json['stage'] as String,
       confidence: (json['confidence'] as num).toDouble(),
     );
+  }
+  
+  Map<String, dynamic> toJson() {
+    return {
+      'start_time': startTime,
+      'end_time': endTime,
+      'stage': stage,
+      'confidence': confidence,
+    };
   }
 }
 
@@ -378,6 +488,25 @@ class SummaryStatistics {
       n3Percentage: (json['n3_percentage'] as num).toDouble(),
       remPercentage: (json['rem_percentage'] as num).toDouble(),
     );
+  }
+  
+  Map<String, dynamic> toJson() {
+    return {
+      'total_sleep_time': totalSleepTime,
+      'sleep_efficiency': sleepEfficiency,
+      'sleep_onset_latency': sleepOnsetLatency,
+      'wake_after_sleep_onset': wakeAfterSleepOnset,
+      'wake_time': wakeTime,
+      'n1_time': n1Time,
+      'n2_time': n2Time,
+      'n3_time': n3Time,
+      'rem_time': remTime,
+      'wake_percentage': wakePercentage,
+      'n1_percentage': n1Percentage,
+      'n2_percentage': n2Percentage,
+      'n3_percentage': n3Percentage,
+      'rem_percentage': remPercentage,
+    };
   }
 }
 

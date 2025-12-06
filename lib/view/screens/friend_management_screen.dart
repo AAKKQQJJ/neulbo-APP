@@ -13,7 +13,6 @@ class FriendManagementScreen extends StatefulWidget {
 class _FriendManagementScreenState extends State<FriendManagementScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final FriendService _friendService = FriendService();
   final TextEditingController _searchController = TextEditingController();
 
   List<Friend> _friends = [];
@@ -52,27 +51,80 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
   }
 
   Future<void> _loadFriends() async {
+    print('📞 FriendManagementScreen: 친구 목록 로딩 시작');
+    
     try {
-      final result = await _friendService.getFriends();
-      setState(() {
-        _friends = result['friends'] as List<Friend>;
-      });
+      final result = await FriendService.getFriends(
+        page: 0,
+        size: 50, // 충분한 수의 친구를 로드
+        sort: 'name',
+      );
+      
+      if (mounted) {
+        setState(() {
+          _friends = result['friends'] as List<Friend>;
+        });
+        
+        print('✅ 친구 목록 로딩 성공: ${_friends.length}명');
+      }
     } catch (e) {
-      // 친구 목록 로딩 오류: $e
+      print('❌ 친구 목록 로딩 실패: $e');
+      
+      if (mounted) {
+        // 에러 발생 시 빈 목록으로 설정
+        setState(() {
+          _friends = [];
+        });
+        
+        // 사용자에게 에러 알림
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('친구 목록을 불러오는데 실패했습니다'),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: '다시 시도',
+              textColor: Colors.white,
+              onPressed: () => _loadFriends(),
+            ),
+          ),
+        );
+      }
     }
   }
 
   Future<void> _loadFriendRequests() async {
     try {
-      final result = await _friendService.getFriendRequests(
+      print('🔍 친구 요청 목록 로딩 시작...');
+      final result = await FriendService.getFriendRequests(
         type: 'received',
         status: 'pending',
       );
-      setState(() {
-        _friendRequests = result['friendRequests'] as List<FriendRequest>;
-      });
+      print('📋 친구 요청 API 응답: $result');
+      print('📋 응답 타입: ${result.runtimeType}');
+      print('📋 friendRequests 키 존재: ${result.containsKey('friendRequests')}');
+      
+      if (result.containsKey('friendRequests')) {
+        final friendRequests = result['friendRequests'];
+        print('📋 friendRequests 타입: ${friendRequests.runtimeType}');
+        print('📋 friendRequests 길이: ${(friendRequests as List).length}');
+        
+        setState(() {
+          _friendRequests = friendRequests as List<FriendRequest>;
+        });
+        
+        print('✅ 친구 요청 목록 로딩 완료: ${_friendRequests.length}개');
+      } else {
+        print('❌ 응답에 friendRequests 키가 없습니다');
+        setState(() {
+          _friendRequests = [];
+        });
+      }
     } catch (e) {
-      // 친구 요청 로딩 오류: $e
+      print('❌ 친구 요청 로딩 오류: $e');
+      print('❌ 에러 타입: ${e.runtimeType}');
+      setState(() {
+        _friendRequests = [];
+      });
     }
   }
 
@@ -135,7 +187,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
 
     setState(() => _isSearching = true);
     try {
-      final result = await _friendService.searchUsers(query: query);
+      final result = await FriendService.searchUsers(query: query);
       setState(() {
         _searchResults = result['users'] as List<UserSearchResult>;
       });
@@ -176,7 +228,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
             onPressed: () => Navigator.of(context).pop(),
           ),
           title: const Text(
-            '친구 관리',
+            '친구 관리 & 찾기',
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -191,8 +243,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
             indicatorColor: Colors.white,
             tabs: const [
               Tab(text: '친구 목록'),
-              Tab(text: '친구 요청'),
               Tab(text: '친구 찾기'),
+              Tab(text: '친구 요청'),
             ],
           ),
         ),
@@ -200,8 +252,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
           controller: _tabController,
           children: [
             _buildFriendsTab(),
-            _buildFriendRequestsTab(),
             _buildSearchTab(),
+            _buildFriendRequestsTab(),
           ],
         ),
       ),
@@ -262,13 +314,24 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.1),
+            Colors.white.withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -314,7 +377,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF2D1B69),
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -326,7 +389,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                           : '오프라인',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -334,7 +397,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                   '공통 친구 ${friend.mutualFriendsCount}명',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Colors.white.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -415,13 +478,24 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.1),
+            Colors.white.withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -452,15 +526,17 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF2D1B69),
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _formatDateTime(request.createdAt),
+                      request.createdAt != null 
+                          ? _formatDateTime(request.createdAt!)
+                          : '방금 전',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: Colors.white.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -475,7 +551,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
               request.message!,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[700],
+                color: Colors.white.withValues(alpha: 0.8),
               ),
             ),
           ],
@@ -532,16 +608,34 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         Container(
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withValues(alpha: 0.15),
+                Colors.white.withValues(alpha: 0.1),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3),
+              width: 1,
+            ),
           ),
           child: TextField(
             controller: _searchController,
-            decoration: const InputDecoration(
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
               hintText: '닉네임 또는 이메일로 검색',
-              prefixIcon: Icon(Icons.search, color: Color(0xFF6B46C1)),
+              hintStyle: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+              ),
+              prefixIcon: Icon(
+                Icons.search, 
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
               border: InputBorder.none,
-              contentPadding: EdgeInsets.all(16),
+              contentPadding: const EdgeInsets.all(16),
             ),
             onChanged: (value) {
               _searchUsers(value);
@@ -575,6 +669,17 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                          if (_searchController.text.isEmpty) ...[
+                            const SizedBox(height: 8),
+                            const Text(
+                              '닉네임 또는 이메일로 새로운 친구를 찾아보세요',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ],
                       ),
                     )
@@ -596,13 +701,24 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.1),
+            Colors.white.withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -630,7 +746,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF2D1B69),
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -638,7 +754,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                   '공통 친구 ${user.mutualFriendsCount}명',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -709,7 +825,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
 
   Future<void> _sendFriendRequest(UserSearchResult user) async {
     try {
-      await _friendService.sendFriendRequest(targetUserId: user.userId);
+      await FriendService.sendFriendRequest(targetUserId: user.userId);
       
       setState(() {
         final index = _searchResults.indexWhere((u) => u.userId == user.userId);
@@ -730,10 +846,35 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('친구 요청 전송 실패: $e')),
-        );
+      if (e is AlreadyRequestedException) {
+        // 이미 친구 요청을 보낸 경우 - UI 상태 업데이트
+        setState(() {
+          final index = _searchResults.indexWhere((u) => u.userId == user.userId);
+          if (index != -1) {
+            _searchResults[index] = UserSearchResult(
+              userId: user.userId,
+              nickname: user.nickname,
+              profileImage: user.profileImage,
+              friendshipStatus: FriendshipStatus.pendingSent,
+              mutualFriendsCount: user.mutualFriendsCount,
+            );
+          }
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${user.nickname}님에게 이미 친구 요청을 보냈습니다'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('친구 요청 전송 실패: $e')),
+          );
+        }
       }
     }
   }
@@ -752,42 +893,56 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
     FriendRequestAction action,
   ) async {
     try {
-      await _friendService.respondToFriendRequest(
+      final response = await FriendService.respondToFriendRequestApi(
         requestId: request.friendRequestId,
-        action: action,
+        action: action == FriendRequestAction.accept ? 'ACCEPT' : 'REJECT',
       );
       
-      setState(() {
-        _friendRequests.removeWhere(
-          (r) => r.friendRequestId == request.friendRequestId,
-        );
-      });
+      if (mounted) {
+        setState(() {
+          _friendRequests.removeWhere(
+            (r) => r.friendRequestId == request.friendRequestId,
+          );
+        });
+      }
       
-      if (action == FriendRequestAction.accept) {
-        // 친구 목록에 추가
+      if (action == FriendRequestAction.accept && response['friendship'] != null && mounted) {
+        // 실제 API 응답에서 friendship 정보를 받아서 친구 목록에 추가
+        final friendshipData = response['friendship'];
         setState(() {
           _friends.add(Friend(
-            friendshipId: 'new_friendship_${DateTime.now().millisecondsSinceEpoch}',
+            friendshipId: friendshipData['friendshipId'],
             friend: request.fromUser,
-            friendshipDate: DateTime.now(),
-            mutualFriendsCount: 0,
+            friendshipDate: DateTime.parse(friendshipData['createdAt']),
+            mutualFriendsCount: 0, // API에서 제공하지 않으므로 기본값
           ));
         });
       }
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            action == FriendRequestAction.accept
-                ? '친구 요청을 수락했습니다'
-                : '친구 요청을 거절했습니다',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              action == FriendRequestAction.accept
+                  ? '친구 요청을 수락했습니다'
+                  : '친구 요청을 거절했습니다',
+            ),
+            backgroundColor: action == FriendRequestAction.accept
+                ? Colors.green
+                : Colors.orange,
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('친구 요청 처리 실패: $e')),
-      );
+      if (mounted) {
+        final errorMessage = e.toString().replaceFirst('Exception: ', '');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -816,7 +971,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
 
   Future<void> _deleteFriend(Friend friend) async {
     try {
-      await _friendService.deleteFriend(friend.friendshipId);
+      await FriendService.deleteFriend(friend.friendshipId);
       
       setState(() {
         _friends.removeWhere((f) => f.friendshipId == friend.friendshipId);

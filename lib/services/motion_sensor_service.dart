@@ -28,9 +28,9 @@ class MotionSensorService {
         if (_isRecording && _recordingStartTime != null) {
           final now = DateTime.now();
           
-          // 30초 간격으로 데이터 저장 (배터리 절약)
+          // 10초 간격으로 데이터 저장 (데이터 밀도 개선)
           if (_accelerometerDataList.isEmpty ||
-              now.difference(_accelerometerDataList.last.timestamp).inSeconds >= 30) {
+              now.difference(_accelerometerDataList.last.timestamp).inSeconds >= 10) {
             
             // Swift 예제처럼 팩토리 메서드 사용
             final data = AccelerometerData.fromSleepStart(

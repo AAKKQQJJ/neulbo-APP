@@ -38,6 +38,9 @@ dependencies:
   #HTTP 관련
   http: ^1.1.0
   dio: ^5.3.2
+  
+  # 국제화 및 날짜 포맷팅
+  intl: ^0.19.0
 
   #상태관리
   flutter_riverpod: ^2.4.0
@@ -50,7 +53,7 @@ dependencies:
   url_launcher: ^6.1.0
   google_sign_in: ^6.1.0
   kakao_flutter_sdk_user: ^1.9.5
-  flutter_naver_login: ^1.8.0
+  # flutter_naver_login: ^1.8.0  # 빌드 문제로 임시 비활성화
 
   # 로컬 저장소 (JWT 토큰 저장용)
   shared_preferences: ^2.2.0
@@ -76,6 +79,9 @@ dependencies:
   # 화면 밝기 조절 (수면 측정 중 배터리 절약)
   screen_brightness: ^1.0.1
   # wakelock_plus: ^1.2.8  # 화면이 자동으로 꺼지도록 제거됨
+
+  # 마크다운 렌더링
+  flutter_markdown: ^0.7.3+1
 
 
 

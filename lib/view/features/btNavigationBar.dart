@@ -15,28 +15,40 @@ class BtNavigationBar extends StatefulWidget {
 
 class _BtNavigationBarState extends State<BtNavigationBar> {
   int _selectedIndex = 0;
+  final GlobalKey<State<HomeScreen>> _homeScreenKey = GlobalKey<State<HomeScreen>>();
 
-  final List<Widget> _Tap = [
+  late final List<Widget> _Tap = [
     /// 홈 탭
-    HomeScreen(),
+    HomeScreen(key: _homeScreenKey),
 
     /// 커뮤니티 탭
-    CommunityScreen(),
+    const CommunityScreen(),
 
     /// 수면모드 탭
-    SleepmodeScreen(),
+    const SleepmodeScreen(),
 
     /// 수면 인공비서 탭
-    SleepaiScreen(),
+    const SleepaiScreen(),
 
     /// 내 정보 탭
-    MyprofileScreen(),
+    const MyprofileScreen(),
   ];
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    
+    // 홈 탭으로 전환 시 디바이스 설정 재확인
+    if (index == 0) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        final state = _homeScreenKey.currentState;
+        if (state != null && state is State<HomeScreen>) {
+          // Dynamic call로 public 메서드 호출
+          (state as dynamic).checkAndReloadIfDeviceChanged();
+        }
+      });
+    }
   }
 
   @override

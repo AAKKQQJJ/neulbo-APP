@@ -326,16 +326,16 @@ class _SleepmodeScreenState extends State<SleepmodeScreen> {
                               child: Text(
                                 _alarmTime != null ? _formatTime(_alarmTime!) : '-- : -- --',
                                 style: const TextStyle(
-                                  color: Colors.white,
+                            color: Colors.white,
                                   fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'suit',
-                                ),
-                              ),
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'suit',
+                          ),
+                        ),
                             ),
                           ],
                         ),
-                      ),
+                        ),
                     ),
                     const Spacer(),
                     // 수면 시작 버튼
@@ -343,7 +343,7 @@ class _SleepmodeScreenState extends State<SleepmodeScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _startSleep,
-                        style: ElevatedButton.styleFrom(
+                          style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD4C5F9),
                           foregroundColor: const Color(0xFF2D1B69),
                           padding: const EdgeInsets.symmetric(vertical: 18),
@@ -351,7 +351,7 @@ class _SleepmodeScreenState extends State<SleepmodeScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           elevation: 0,
-                        ),
+                          ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -368,7 +368,7 @@ class _SleepmodeScreenState extends State<SleepmodeScreen> {
                           ],
                         ),
                       ),
-                    ),
+                        ),
                     const SizedBox(height: 20),
                   ],
                 ),

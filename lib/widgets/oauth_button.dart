@@ -20,6 +20,20 @@ class OAuthButton extends StatelessWidget {
       height: LoginConstants.buttonHeight,
       child: ElevatedButton(
         onPressed: () async {
+          // 네이버 로그인인 경우 비활성화 메시지 표시
+          if (config.provider == 'naver') {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('현재 문제가 생겨 네이버 로그인이 불가능합니다.\n다른 로그인 방법을 이용해주세요.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+            return;
+          }
+
           try {
             final success = await OAuthService.startOAuthLogin(config.provider);
             if (success && context.mounted) {
@@ -47,9 +61,16 @@ class OAuthButton extends StatelessWidget {
           } catch (e) {
             print('로그인 에러: $e');
             if (context.mounted) {
+              String errorMessage = '로그인에 실패했습니다. 다시 시도해주세요.';
+              
+              // 네이버 로그인 관련 에러인 경우 특별한 메시지 표시
+              if (e.toString().contains('네이버 로그인이 불가능합니다')) {
+                errorMessage = '현재 문제가 생겨 네이버 로그인이 불가능합니다.\n다른 로그인 방법을 이용해주세요.';
+              }
+              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('로그인에 실패했습니다. 다시 시도해주세요.'),
+                  content: Text(errorMessage),
                   backgroundColor: Colors.red,
                 ),
               );
@@ -57,8 +78,12 @@ class OAuthButton extends StatelessWidget {
           }
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: config.backgroundColor,
-          foregroundColor: config.textColor,
+          backgroundColor: config.provider == 'naver' 
+              ? config.backgroundColor.withOpacity(0.5) 
+              : config.backgroundColor,
+          foregroundColor: config.provider == 'naver' 
+              ? config.textColor.withOpacity(0.5) 
+              : config.textColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(LoginConstants.buttonRadius),
           ),
@@ -94,9 +119,13 @@ class OAuthButton extends StatelessWidget {
             ),
             Center(
               child: Text(
-                config.text,
+                config.provider == 'naver' 
+                    ? '네이버 로그인 (현재 불가능)' 
+                    : config.text,
                 style: LoginConstants.buttonTextStyle.copyWith(
-                  color: config.textColor,
+                  color: config.provider == 'naver' 
+                      ? config.textColor.withOpacity(0.5) 
+                      : config.textColor,
                 ),
               ),
             ),
